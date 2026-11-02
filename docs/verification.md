@@ -55,4 +55,10 @@ ProgramProgress는 절대 시작/종료 시각과 현재시각으로 비율을 �
 
 각 목록 항목의 ProgramTimeRow는 시간 텍스트와 비상호작용 ProgramProgressView로만 구성한다. rowTimeProgress는 화면 재구성/목록 갱신 시 해제·재구성하며 foreground ticker가 현재 편성으로 1초마다 업데이트한다. 유효한 현재 편성이 없으면 줄 전체를 숨긴다. 목록·하단·재생화면에 숫자 퍼센트를 출력하는 경로와 player progressLabel을 제거했다. 하단 정상 재생 문구만 제외하고 연결/일시정지/오류는 보존한다. 좁은 목록 열의 레이아웃·터치 무처리·정보 누락/종료·숫자 퍼센트 제거를 Robolectric에서 검사한다. 실기기 렌더링은 미검증이다.
 
-DEV10 결과: build-a assembleDebug/lintDebug/testDebugUnitTest 성공, 총 43건 통과(진행률 목록 행 3건 추가), 실시간 API 1건 기본 제외. 독립 소스 검토에서 각 행 갱신/캐시 해제/퍼센트 제거/중복시간 제거/하단 정상 상태 문구 제거를 확인했다. native apksigner/zipalign, 버전·패키지·기존 서명 일치 검증. 실제 단말 렌더링은 미검증이다.
+## 0.1.0-dev11 검증 범위
+
+ProgramTimeRow 시간은 글자에 필요한 폭만 사용하고 bar가 남은 폭 전체를 차지한다. 16%/56dp 폭 제한을 제거한다. 좁은 열에서는 시간 최대 폭을 제한해 최소 16dp bar 공간을 확보한다. 140/240/500dp 폭에서 bar 시작이 시간 바로 뒤이고 끝이 행 끝에 맞으며 가용 폭 증가분 전체가 bar에 반영되는지 검증한다. 실기기 렌더링은 미검증이다.
+
+재생화면 본문의 playerProgress View·필드·갱신 경로를 제거한다. 하단 miniProgress와 목록 ProgramTimeRow의 진행률 표시는 유지한다.
+
+DEV11 결과: build-a assembleDebug/lintDebug/testDebugUnitTest 성공, 총 44건 통과, 실시간 API 1건 기본 제외. 140/240/500dp 행에서 시간 바로 뒤부터 행 끝까지 bar가 확장되는 것을 Robolectric으로 검증했다. 독립 검토에서 중앙 바 제거 및 하단/목록 진행바 보존 확인. native apksigner/zipalign·기존 서명·패키지/버전 식별 통과. 실기기 렌더링 미검증.
