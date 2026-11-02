@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
  namespace 'kr.jinsu.radio'
  compileSdk 36
- defaultConfig { applicationId 'kr.jinsu.radio.dev'; minSdk 26; targetSdk 36; versionCode 16; versionName '0.1.0-dev16' }
+ defaultConfig { applicationId 'kr.jinsu.radio.dev'; minSdk 26; targetSdk 36; versionCode 17; versionName '0.1.0-dev17' }
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
  buildTypes { debug { debuggable true } }
 }
@@ -13,7 +13,7 @@ dependencies {
 }
 dependencies { testImplementation 'junit:junit:4.13.2' }
 dependencies { testImplementation 'org.json:json:20240303' }
-android { testOptions { unitTests.all { systemProperty 'radioLiveCheck', project.findProperty('radioLiveCheck') ?: 'false'; testLogging { showStandardStreams = true } } } }
+android { testOptions { unitTests.all { systemProperty 'radioLiveCheck', project.findProperty('radioLiveCheck') ?: 'false'; systemProperty 'radioYoutubeLiveCheck', project.findProperty('radioYoutubeLiveCheck') ?: 'false'; systemProperty 'radioYoutubeEvidencePath', new File(project.buildDir, 'yonhap-live').absolutePath; testLogging { showStandardStreams = true } } } }
 
 dependencies { testImplementation 'org.robolectric:robolectric:4.14.1' }
 android { testOptions { unitTests.includeAndroidResources = true } }

@@ -92,3 +92,17 @@ StationListPositionTest는 실제 행 클릭 경로를 사용하고 네트워크
 기존 kr.jinsu.radio.dev 및 개발 서명 인증서를 유지하고 versionCode를 15에서 16으로 증가시켰습니다. aapt identity, apksigner 서명/이전 인증서 일치, zipalign과 최종 복사 파일 SHA-256을 확인했습니다. ADB 연결 기기가 없어 실제 단말의 설치·테마 전환·음성 연속 재생·시각 체감은 미검증이며 Robolectric 검사를 실기기 결과로 대신하지 않습니다.
 
 범위는 시스템 다크모드와 필요한 리소스·버전·회귀 테스트·문서에 한정했습니다. PR-003에 따라 dev15 버전 문자열 참조를 먼저 검색하고 현재 산출물 정보와 앱 정보를 dev16으로 정합화했습니다. 과거 검증 이력의 버전명은 보존했습니다. 공식 참조: https://developer.android.com/develop/ui/views/theming/darktheme .
+
+## 0.1.0-dev17 연합뉴스TV 유튜브 라이브 오디오
+
+기준선은 dev16 fcc407b8fa5d2d6a8f992cafe1bbaad5455e50b3입니다. 공식 라이브 6QZ_qc75ihU와 공식 channelId UCTHCOPwqNfZ0uiKOvFyhGwg를 현재 공개 응답으로 확인했습니다. 공개 watch 응답의 일회성 guest visitor와 player API로 매 재생/재개 시 새 HLS를 얻고, TYPE=AUDIO rendition 234를 우선 선택합니다. 영상 혼합 스트림으로 대체하지 않으며 서비스의 영상 track도 비활성화했습니다. 기존 링크 종료 시 공식 채널의 현재 live 페이지로 한 번 재탐색합니다. 로그인·쿠키·키·중계서버·의존성 추가는 없습니다.
+
+모든 정렬에서 새 행은 최하단입니다. 즐겨찾기와 이전/다음 순환에 포함하고 가짜 FM 주파수 대신 LIVE만 표시합니다. 목록·재생·미니바·태블릿에서 편성표·프로그램 설명·시간·진행률 및 정보 미제공 문구를 표시하지 않습니다. 기존 FM 14개·다크모드·목록 위치와 출력 세대/취소 ticket 보호는 보존했습니다.
+
+독립 코드/보안 검토에서 signed URL 만료 후 복구와 재개 중 취소 UX를 확인하고 보완했습니다. 앱 재개는 기존 play(selected) 커맨드/future/loading 경로를 사용하고, 외부 재개도 새 주소를 발급받습니다. 오류 복구는 유효한 출력 세대·재생 희망·미진행 조건에서 monotonic clock 기준 60초당 최대 1회이며, 실제 재생 성공 때만 화면 오류를 해제합니다. 빠른 중지·채널 교체·블루투스 분리 이후 오래된 요청은 재생되지 않습니다.
+
+최종 후보의 assembleDebug·lintDebug(오류 0개)·testDebugUnitTest를 통과했습니다. 96개 중 95개 통과·기존 전체 FM 실시간 편성 검사 1개 생략입니다. 새 실제 YouTube live 검사는 명시적으로 켜서 앱의 YoutubeLiveAudio.resolve 자체로 media playlist를 성공 수신했습니다. 해당 경로의 미디어 segment 80,540 bytes를 FFprobe로 검사하여 AAC audio stream 1개·video 0개를 확인했습니다. UI·정렬·즐겨찾기·순환·오디오 manifest 선택·혼합영상 거부·HTTPS/host·공식 live 확인·복구 제한·기존 FM/다크모드 회귀 검사를 포함합니다.
+
+dev16→dev17 applicationId 및 서명 인증서 일치, versionCode 증가(16→17), minSdk 26/targetSdk 36, zipalign과 최종 복사 APK byte/SHA 일치를 확인했습니다. 검증 모드는 INDEPENDENT이며 별도 검증자가 현재 diff·실제 live/codec·최종 테스트 원본을 검토했습니다. 실제 Android 단말 설치·스피커 출력·물리 블루투스 조작·6시간 이상 연속 재생은 ADB 기기 부재로 미검증입니다. 공개 미디어 데이터 검증을 실기기 청취 성공으로 표시하지 않습니다.
+
+범위는 요청한 연합뉴스TV live audio와 필요한 수명/취소 처리·UI·회귀시험·버전/문서입니다. 외부 입력은 고정된 공식 채널만 허용하고 API/redirect/media는 YouTube·Googlevideo HTTPS로 제한하며 12초 타임아웃·5MB 응답 상한을 적용합니다. visitor 및 서명된 주소는 소스·장기 저장·로그에 넣지 않습니다. PR-003/008에 따라 identity 참조 검색 및 실제 공개 응답 구조를 선행 확인했습니다. 공개 player 응답 구조 변경에 따른 추후 추출기 유지보수 가능성은 남습니다.

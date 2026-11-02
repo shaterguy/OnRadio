@@ -12,6 +12,9 @@ public final class RadioData {
  public static final ZoneId SEOUL=ZoneId.of("Asia/Seoul");
  public static final class Station {
   public final String id,name,brand,fm,description,kind,code,website,schedule;
+  public boolean hasPrograms(){return !kind.equals("youtube");}
+  public String displayFrequency(){return fm.isEmpty()?"LIVE":fm;}
+  public String mediaArtist(){return fm.isEmpty()?name:name+" · FM "+fm;}
   Station(String id,String name,String brand,String fm,String description,String kind,String code,String website,String schedule){this.id=id;this.name=name;this.brand=brand;this.fm=fm;this.description=description;this.kind=kind;this.code=code;this.website=website;this.schedule=schedule;}
  }
  public static final List<Station> STATIONS=Collections.unmodifiableList(Arrays.asList(
@@ -28,9 +31,10 @@ public final class RadioData {
   new Station("cbs981","CBS 표준FM","CBS","98.1","뉴스와 시사, 문화와 음악을 전하는 채널","static","https://m-aac.cbs.co.kr/mweb_cbs981/_definst_/cbs981.stream/playlist.m3u8","https://www.cbs.co.kr/radio/","https://www.cbs.co.kr/schedule?type=fm"),
   new Station("ytn","YTN 라디오","YTN","94.5","뉴스와 시사, 생활정보를 전하는 YTN 라디오","static","https://radiolive.ytn.co.kr/radio/_definst_/20211118_fmlive/playlist.m3u8","https://radio.ytn.co.kr/","https://radio.ytn.co.kr/schedule/daily.php"),
   new Station("tbs","TBS FM","TBS","95.1","서울과 수도권의 교통·생활·문화정보를 전하는 라디오","static","https://cdnfm.tbs.seoul.kr/tbs/_definst_/tbs_fm_web_360.smil/playlist.m3u8","http://tbs.seoul.kr/fm/index.do","http://tbs.seoul.kr/fm/schedule.do"),
-  new Station("ebs","EBS FM","EBS","104.5","외국어와 교양, 배움이 있는 교육 라디오","static","https://ebsonair.ebs.co.kr/fmradiofamilypc/familypc1m/playlist.m3u8","https://home.ebs.co.kr/efm","https://www.ebs.co.kr/schedule?channelCd=RADIO&onor=RADIO")
+  new Station("ebs","EBS FM","EBS","104.5","외국어와 교양, 배움이 있는 교육 라디오","static","https://ebsonair.ebs.co.kr/fmradiofamilypc/familypc1m/playlist.m3u8","https://home.ebs.co.kr/efm","https://www.ebs.co.kr/schedule?channelCd=RADIO&onor=RADIO"),
+  new Station("yonhap","연합뉴스TV","연합뉴스TV","","","youtube","6QZ_qc75ihU","https://www.youtube.com/watch?v=6QZ_qc75ihU","")
  ));
- public static List<Station> orderedStations(String order){ArrayList<Station> sorted=new ArrayList<>(STATIONS);java.text.Collator names=java.text.Collator.getInstance(Locale.KOREAN);names.setStrength(java.text.Collator.SECONDARY);Comparator<Station> byName=(a,b)->names.compare(a.name,b.name);Comparator<Station> comparator=order.startsWith("name")?byName:Comparator.comparingDouble((Station a)->Double.parseDouble(a.fm)).thenComparing(byName);sorted.sort(order.endsWith("_desc")?comparator.reversed():comparator);return sorted;}
+ public static List<Station> orderedStations(String order){ArrayList<Station> sorted=new ArrayList<>();for(Station station:STATIONS)if(station.hasPrograms())sorted.add(station);java.text.Collator names=java.text.Collator.getInstance(Locale.KOREAN);names.setStrength(java.text.Collator.SECONDARY);Comparator<Station> byName=(a,b)->names.compare(a.name,b.name);Comparator<Station> comparator=order.startsWith("name")?byName:Comparator.comparingDouble((Station a)->Double.parseDouble(a.fm)).thenComparing(byName);sorted.sort(order.endsWith("_desc")?comparator.reversed():comparator);for(Station station:STATIONS)if(!station.hasPrograms())sorted.add(station);return sorted;}
  public static Station find(String id){for(Station s:STATIONS)if(s.id.equals(id))return s;return STATIONS.get(0);}
  public static String get(String url) throws Exception {
   URL u=new URL(url); if(!u.getProtocol().equals("https")&&!(u.getProtocol().equals("http")&&u.getHost().equals("tbs.seoul.kr")))throw new IOException("안전하지 않은 방송 주소");
@@ -39,6 +43,7 @@ public final class RadioData {
  }
  public static String resolve(Station s) throws Exception {
   String result;
+  if(s.kind.equals("youtube"))return YoutubeLiveAudio.resolve(s.code);
   if(s.kind.equals("kbs")){JSONObject o=new JSONObject(get("https://cfpwwwapi.kbs.co.kr/api/v1/landing/live/channel_code/"+s.code));JSONArray a=o.getJSONArray("channel_item");result="";for(int i=0;i<a.length();i++){JSONObject it=a.getJSONObject(i);if("radio".equals(it.optString("media_type"))){result=it.getString("service_url");break;}}}
   else if(s.kind.equals("mbc"))result=get("https://sminiplay.imbc.com/aacplay.ashx?agent=webapp&channel="+s.code).trim();
   else if(s.kind.equals("sbs")){String code=s.code.equals("Power")?"power":"love";result=get("https://apis.sbs.co.kr/play-api/1.0/livestream/"+code+"pc/"+code+"fm?protocol=hls&ssl=Y").trim();}
@@ -75,7 +80,7 @@ public final class RadioData {
   while(m.find())rows.add(new String[]{m.group(1),clean(m.group(2))});return slots(rows,date,"https://www.ebs.co.kr/schedule?channelCd=RADIO&onor=RADIO");
  }
  public static List<Program> schedule(Station s,LocalDate date)throws Exception {
-  ArrayList<Program> list=new ArrayList<>();
+  ArrayList<Program> list=new ArrayList<>();if(!s.hasPrograms())return list;
   if(s.id.equals("ebs")){
    LocalDate broadcastDate=ZonedDateTime.now(SEOUL).getHour()<5?date.minusDays(1):date;
    list.addAll(parseEbsSchedule(get("https://www.ebs.co.kr/onair/scheduleNew?channelCodeString=RADIO"),broadcastDate));
