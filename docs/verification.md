@@ -51,4 +51,8 @@ Media3 1.8 ForwardingSimpleBasePlayer의 State.availableCommands 및 handleSeek�
 
 ProgramProgress는 절대 시작/종료 시각과 현재시각으로 비율을 계산하고 0∼100% 범위로 제한한다. 앱 ProgressView는 seek thumb·player 참조·터치 처리가 없는 그리기 전용이다. RadioSessionPlayer의 표시 상태에 프로그램 길이/시각을 투영하되 실제 ExoPlayer HLS 타임라인은 수정하지 않는다. 시간 탐색 명령을 모두 차단하고 이전/다음 채널 명령은 보존한다. 일시정지 중 wall-clock 경과, 자정 프로그램, 편성정보 누락/만료, 탐색 차단, 터치 무처리와 기존 미디어 세션 명령을 검증한다. 실제 시스템 UI 표시는 실기기 미검증이다.
 
-DEV9 결과: build-a assembleDebug/lintDebug/testDebugUnitTest 성공. 제품 소스 변경 없이 controller readback 테스트만 보강한 controller-test에서 총 40건 통과, 실시간 API 1건 기본 제외. Robolectric 9건에는 앱 화면 없는 미디어 세션 연결, 표시 duration=3600000ms/position=1800000ms, paused 30초 경과→1830000ms readback, seek 명령 차단 및 raw engine 위치 불변을 포함한다. ProgramProgress 5건은 반 진행·시작/종료 clamp·유효하지 않은 편성·자정·종료 경계를 검증한다. 독립 검토에서 virtual timeline/단위 변환/읽기 전용/라이브 복귀/이벤트 재귀·작업 누적 경로를 확인했다. native apksigner/zipalign 및 기존 개발 서명 일치 확인. 실제 휴대폰 알림·잠금화면의 표시 모양은 미검증이다.
+## 0.1.0-dev10 검증 범위
+
+각 목록 항목의 ProgramTimeRow는 시간 텍스트와 비상호작용 ProgramProgressView로만 구성한다. rowTimeProgress는 화면 재구성/목록 갱신 시 해제·재구성하며 foreground ticker가 현재 편성으로 1초마다 업데이트한다. 유효한 현재 편성이 없으면 줄 전체를 숨긴다. 목록·하단·재생화면에 숫자 퍼센트를 출력하는 경로와 player progressLabel을 제거했다. 하단 정상 재생 문구만 제외하고 연결/일시정지/오류는 보존한다. 좁은 목록 열의 레이아웃·터치 무처리·정보 누락/종료·숫자 퍼센트 제거를 Robolectric에서 검사한다. 실기기 렌더링은 미검증이다.
+
+DEV10 결과: build-a assembleDebug/lintDebug/testDebugUnitTest 성공, 총 43건 통과(진행률 목록 행 3건 추가), 실시간 API 1건 기본 제외. 독립 소스 검토에서 각 행 갱신/캐시 해제/퍼센트 제거/중복시간 제거/하단 정상 상태 문구 제거를 확인했다. native apksigner/zipalign, 버전·패키지·기존 서명 일치 검증. 실제 단말 렌더링은 미검증이다.
