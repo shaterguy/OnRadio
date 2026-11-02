@@ -61,4 +61,8 @@ ProgramTimeRow 시간은 글자에 필요한 폭만 사용하고 bar가 남은 �
 
 재생화면 본문의 playerProgress View·필드·갱신 경로를 제거한다. 하단 miniProgress와 목록 ProgramTimeRow의 진행률 표시는 유지한다.
 
-DEV11 결과: build-a assembleDebug/lintDebug/testDebugUnitTest 성공, 총 44건 통과, 실시간 API 1건 기본 제외. 140/240/500dp 행에서 시간 바로 뒤부터 행 끝까지 bar가 확장되는 것을 Robolectric으로 검증했다. 독립 검토에서 중앙 바 제거 및 하단/목록 진행바 보존 확인. native apksigner/zipalign·기존 서명·패키지/버전 식별 통과. 실기기 렌더링 미검증.
+## 0.1.0-dev12 검증 범위
+
+buildPlayer의 ScrollView는 body에서 weight1을 사용하고 편성표/홈페이지 row는 scroll의 형제 footer로 고정한다. 설명과 안내문은 스크롤에 남고 줄 수 제한·말줄임·삭제를 하지 않는다. 재생바는 기존 root 하단에 유지한다. 실제 MainActivity를 네트워크 없는 하위 클래스로 구성한 Robolectric 시험으로 설명 길이·스크롤·360dp 폭 및 560/820dp 높이에서 버튼 위치 고정과 설명 원문 유지, 재생바 비겹침을 검증한다. 실기기 렌더링은 미검증이다.
+
+DEV12 결과: build-a assembleDebug/lintDebug/testDebugUnitTest 성공, 총 46건 통과, 실시간 API 1건 기본 제외. PlayerLayoutTest 2건에서 실제 MainActivity의 고정 footer 위치/긴 설명 유지/스크롤 시 footer와 dock 고정/360dp 화면의 560·820dp 높이 비겹침을 검증했다. 독립 검토 및 native apksigner/zipalign·기존 서명·패키지/버전 검사 통과. 실제 단말 렌더링 미검증.

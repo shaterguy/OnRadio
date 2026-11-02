@@ -1,5 +1,5 @@
-version=0.1.0-dev11
-versionCode=11
+version=0.1.0-dev12
+versionCode=12
 applicationId=kr.jinsu.radio.dev
-bytes=4697324
-sha256=921879c0497db380a914a1b0652c6b89d818a61abb822d2cb62f3f51fb5d9213
+bytes=4697312
+sha256=04c5c5e8f8466e05eee26eec614ca3726f94a8d4d422fa0642b9b5ebc4bae452
