@@ -11,11 +11,12 @@ import java.util.*;
 public final class RadioData {
  public static final ZoneId SEOUL=ZoneId.of("Asia/Seoul");
  public static final class Station {
-  public final String id,name,brand,fm,description,kind,code,website,schedule;
+  public final String id,name,brand,fm,description,kind,code,website,schedule,channelId;
   public boolean hasPrograms(){return !kind.equals("youtube");}
   public String displayFrequency(){return fm.isEmpty()?"LIVE":fm;}
   public String mediaArtist(){return fm.isEmpty()?name:name+" · FM "+fm;}
-  Station(String id,String name,String brand,String fm,String description,String kind,String code,String website,String schedule){this.id=id;this.name=name;this.brand=brand;this.fm=fm;this.description=description;this.kind=kind;this.code=code;this.website=website;this.schedule=schedule;}
+  Station(String id,String name,String brand,String fm,String description,String kind,String code,String website,String schedule){this(id,name,brand,fm,description,kind,code,website,schedule,"");}
+  Station(String id,String name,String brand,String fm,String description,String kind,String code,String website,String schedule,String channelId){this.channelId=channelId;this.id=id;this.name=name;this.brand=brand;this.fm=fm;this.description=description;this.kind=kind;this.code=code;this.website=website;this.schedule=schedule;}
  }
  public static final List<Station> STATIONS=Collections.unmodifiableList(Arrays.asList(
   new Station("kbs25","KBS Cool FM","KBS","89.1","음악과 이야기가 함께하는 KBS의 대중음악 채널","kbs","25","https://radio.kbs.co.kr/","https://schedule.kbs.co.kr/"),
@@ -32,10 +33,17 @@ public final class RadioData {
   new Station("ytn","YTN 라디오","YTN","94.5","뉴스와 시사, 생활정보를 전하는 YTN 라디오","static","https://radiolive.ytn.co.kr/radio/_definst_/20211118_fmlive/playlist.m3u8","https://radio.ytn.co.kr/","https://radio.ytn.co.kr/schedule/daily.php"),
   new Station("tbs","TBS FM","TBS","95.1","서울과 수도권의 교통·생활·문화정보를 전하는 라디오","static","https://cdnfm.tbs.seoul.kr/tbs/_definst_/tbs_fm_web_360.smil/playlist.m3u8","http://tbs.seoul.kr/fm/index.do","http://tbs.seoul.kr/fm/schedule.do"),
   new Station("ebs","EBS FM","EBS","104.5","외국어와 교양, 배움이 있는 교육 라디오","static","https://ebsonair.ebs.co.kr/fmradiofamilypc/familypc1m/playlist.m3u8","https://home.ebs.co.kr/efm","https://www.ebs.co.kr/schedule?channelCd=RADIO&onor=RADIO"),
-  new Station("yonhap","연합뉴스TV","연합뉴스TV","","","youtube","6QZ_qc75ihU","https://www.youtube.com/watch?v=6QZ_qc75ihU","")
+  new Station("yonhap","연합뉴스TV","연합뉴스TV","","","youtube","6QZ_qc75ihU","https://www.youtube.com/watch?v=6QZ_qc75ihU","","UCTHCOPwqNfZ0uiKOvFyhGwg"),
+  youtube("ytnlive","YTN","aZyD6EPl6KU","UChlgI3UHCOnwUGzWzbJ3H5w"),
+  youtube("mbcnews","MBC뉴스","q9bM12ucTIY","UCF4Wxdo3inmxP-Y59wXDsFw")
  ));
- public static List<Station> orderedStations(String order){ArrayList<Station> sorted=new ArrayList<>();for(Station station:STATIONS)if(station.hasPrograms())sorted.add(station);java.text.Collator names=java.text.Collator.getInstance(Locale.KOREAN);names.setStrength(java.text.Collator.SECONDARY);Comparator<Station> byName=(a,b)->names.compare(a.name,b.name);Comparator<Station> comparator=order.startsWith("name")?byName:Comparator.comparingDouble((Station a)->Double.parseDouble(a.fm)).thenComparing(byName);sorted.sort(order.endsWith("_desc")?comparator.reversed():comparator);for(Station station:STATIONS)if(!station.hasPrograms())sorted.add(station);return sorted;}
- public static Station find(String id){for(Station s:STATIONS)if(s.id.equals(id))return s;return STATIONS.get(0);}
+ private static volatile List<Station> liveOverrides=Collections.emptyList();
+ public static Station youtube(String id,String name,String videoId,String channelId){return new Station(id,name,name,"","","youtube",videoId,"https://www.youtube.com/watch?v="+videoId,"",channelId);}
+ static void setLiveOverrides(List<Station> records){liveOverrides=Collections.unmodifiableList(new ArrayList<>(records));}
+ public static List<Station> stations(){List<Station> overrides=liveOverrides;ArrayList<Station> all=new ArrayList<>();Set<String> ids=new HashSet<>();for(Station built:STATIONS){Station row=built;for(Station changed:overrides)if(changed.id.equals(built.id)){row=changed;break;}all.add(row);ids.add(row.id);}for(Station added:overrides)if(ids.add(added.id))all.add(added);return Collections.unmodifiableList(all);}
+ public static List<Station> orderedStations(String order){ArrayList<Station> sorted=new ArrayList<>();for(Station station:stations())if(station.hasPrograms())sorted.add(station);java.text.Collator names=java.text.Collator.getInstance(Locale.KOREAN);names.setStrength(java.text.Collator.SECONDARY);Comparator<Station> byName=(a,b)->names.compare(a.name,b.name);Comparator<Station> comparator=order.startsWith("name")?byName:Comparator.comparingDouble((Station a)->Double.parseDouble(a.fm)).thenComparing(byName);sorted.sort(order.endsWith("_desc")?comparator.reversed():comparator);for(Station station:stations())if(!station.hasPrograms())sorted.add(station);return sorted;}
+ static boolean matchesCurrent(Station expected){for(Station row:stations())if(row.id.equals(expected.id))return row.code.equals(expected.code)&&row.channelId.equals(expected.channelId)&&row.name.equals(expected.name);return false;}
+ public static Station find(String id){for(Station s:stations())if(s.id.equals(id))return s;return STATIONS.get(0);}
  public static String get(String url) throws Exception {
   URL u=new URL(url); if(!u.getProtocol().equals("https")&&!(u.getProtocol().equals("http")&&u.getHost().equals("tbs.seoul.kr")))throw new IOException("안전하지 않은 방송 주소");
   HttpURLConnection c=(HttpURLConnection)u.openConnection();c.setConnectTimeout(12000);c.setReadTimeout(12000);c.setRequestProperty("User-Agent","Mozilla/5.0 OnRadio/0.1");c.setRequestProperty("Referer",url.contains("imbc.com")?"https://mini.imbc.com/":url.contains("sbs.co.kr")?"https://www.sbs.co.kr/":url.contains("cbs.co.kr")?"https://www.cbs.co.kr/":"https://radio.kbs.co.kr/");
@@ -43,7 +51,7 @@ public final class RadioData {
  }
  public static String resolve(Station s) throws Exception {
   String result;
-  if(s.kind.equals("youtube"))return YoutubeLiveAudio.resolve(s.code);
+  if(s.kind.equals("youtube"))return YoutubeLiveAudio.resolve(s.code,s.channelId);
   if(s.kind.equals("kbs")){JSONObject o=new JSONObject(get("https://cfpwwwapi.kbs.co.kr/api/v1/landing/live/channel_code/"+s.code));JSONArray a=o.getJSONArray("channel_item");result="";for(int i=0;i<a.length();i++){JSONObject it=a.getJSONObject(i);if("radio".equals(it.optString("media_type"))){result=it.getString("service_url");break;}}}
   else if(s.kind.equals("mbc"))result=get("https://sminiplay.imbc.com/aacplay.ashx?agent=webapp&channel="+s.code).trim();
   else if(s.kind.equals("sbs")){String code=s.code.equals("Power")?"power":"love";result=get("https://apis.sbs.co.kr/play-api/1.0/livestream/"+code+"pc/"+code+"fm?protocol=hls&ssl=Y").trim();}

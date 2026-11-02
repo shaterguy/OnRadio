@@ -7,7 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.*;
 
-/** Resolves the public YonhapnewsTV live broadcast to an audio-only HLS rendition. */
+/** Resolves a validated public YouTube live broadcast to an audio-only HLS rendition. */
 final class YoutubeLiveAudio {
  static final String CHANNEL_ID="UCTHCOPwqNfZ0uiKOvFyhGwg";
  static final String WEB_AGENT="Mozilla/5.0 OnRadio/0.1";
@@ -16,14 +16,34 @@ final class YoutubeLiveAudio {
  private static final Pattern VISITOR=Pattern.compile("\"VISITOR_DATA\"\\s*:\\s*\"([^\"]+)\"");
  private static final Pattern ATTRIBUTE=Pattern.compile("(?:^|,)([A-Z0-9-]+)=(\"[^\"]*\"|[^,]*)");
  private YoutubeLiveAudio(){}
- static String resolve(String videoId)throws Exception{
-  if(!videoId.matches("[A-Za-z0-9_-]{11}"))throw new IOException("라이브 주소 형식 오류");
-  try{return resolvePage("https://www.youtube.com/watch?v="+videoId);}
-  catch(IOException unavailable){return resolvePage("https://www.youtube.com/channel/"+CHANNEL_ID+"/live");}
+ static final class LiveInfo {final String videoId,channelId,audioUrl;LiveInfo(String videoId,String channelId,String audioUrl){this.videoId=videoId;this.channelId=channelId;this.audioUrl=audioUrl;}}
+ static String canonicalPage(String value)throws IOException{
+  try{
+   String input=value.trim();if(input.length()>2048)throw new IOException("라이브 주소가 너무 깁니다");
+   if(input.startsWith("youtu.be/")||input.startsWith("youtube.com/")||input.startsWith("www.youtube.com/"))input="https://"+input;
+   URI uri=new URI(input);String host=uri.getHost()==null?"":uri.getHost().toLowerCase(Locale.ROOT);
+   if(!"https".equalsIgnoreCase(uri.getScheme())||uri.getUserInfo()!=null||uri.getPort()!=-1&&uri.getPort()!=443||!Arrays.asList("youtube.com","www.youtube.com","m.youtube.com","youtu.be","www.youtu.be").contains(host))throw new IOException("유튜브 라이브의 HTTPS 주소를 입력해 주세요");
+   String path=uri.getPath(),id="";
+   if(host.endsWith("youtu.be"))id=path.replaceFirst("^/","").replaceFirst("/$","");
+   else if("/watch".equals(path)){String query=uri.getRawQuery();if(query!=null)for(String part:query.split("&")){String[] pair=part.split("=",2);if("v".equals(pair[0])&&pair.length==2){id=URLDecoder.decode(pair[1],"UTF-8");break;}}}
+   else if(path.matches("/(?:live|shorts)/[A-Za-z0-9_-]{11}/?"))id=path.split("/")[2];
+   else if(path.matches("/channel/UC[A-Za-z0-9_-]{22}/live/?")||path.matches("/@[^/\\s]{1,100}/live/?"))return new URI("https","www.youtube.com",path.replaceFirst("/$",""),null).toASCIIString();
+   if(!id.matches("[A-Za-z0-9_-]{11}"))throw new IOException("라이브 영상의 공유 주소를 입력해 주세요");
+   return "https://www.youtube.com/watch?v="+id;
+  }catch(URISyntaxException|IllegalArgumentException error){throw new IOException("라이브 주소 형식을 확인해 주세요");}
  }
- private static String resolvePage(String pageUrl)throws Exception{
+ static LiveInfo inspect(String value)throws Exception{return resolvePage(canonicalPage(value),"");}
+ static String resolve(String videoId)throws Exception{return resolve(videoId,CHANNEL_ID);}
+ static String resolve(String videoId,String channelId)throws Exception{
+  if(!videoId.matches("[A-Za-z0-9_-]{11}")||!channelId.matches("UC[A-Za-z0-9_-]{22}"))throw new IOException("라이브 주소 형식 오류");
+  try{return resolvePage("https://www.youtube.com/watch?v="+videoId,channelId).audioUrl;}
+  catch(IOException unavailable){return resolvePage("https://www.youtube.com/channel/"+channelId+"/live",channelId).audioUrl;}
+ }
+ private static LiveInfo resolvePage(String pageUrl,String expectedChannel)throws Exception{
   String page=request(pageUrl,null,null);JSONObject initial=playerFromPage(page);JSONObject details=initial.optJSONObject("videoDetails");
-  if(details==null||!CHANNEL_ID.equals(details.optString("channelId")))throw new IOException("연합뉴스TV 라이브를 확인하지 못했습니다");
+  if(details==null)throw new IOException("공개 라이브를 확인하지 못했습니다");
+  String channelId=details.optString("channelId");
+  if(!channelId.matches("UC[A-Za-z0-9_-]{22}")||!expectedChannel.isEmpty()&&!expectedChannel.equals(channelId))throw new IOException("등록한 유튜브 채널의 라이브가 아닙니다");
   String id=details.optString("videoId");if(!id.matches("[A-Za-z0-9_-]{11}"))throw new IOException("라이브 식별자 오류");
   Matcher visitor=VISITOR.matcher(page);String visitorId=visitor.find()?new JSONTokener("\""+visitor.group(1)+"\"").nextValue().toString():"";
   if(visitorId.isEmpty())throw new IOException("라이브 접속 정보를 가져오지 못했습니다");
@@ -32,17 +52,18 @@ final class YoutubeLiveAudio {
   Matcher timestamp=Pattern.compile("\"(?:STS|signatureTimestamp)\"\\s*:\\s*(\\d+)").matcher(page);if(timestamp.find())playback.put("signatureTimestamp",Long.parseLong(timestamp.group(1)));
   JSONObject body=new JSONObject().put("context",new JSONObject().put("client",client)).put("videoId",id).put("playbackContext",new JSONObject().put("contentPlaybackContext",playback)).put("contentCheckOk",true).put("racyCheckOk",true);
   JSONObject response=new JSONObject(request("https://www.youtube.com/youtubei/v1/player?prettyPrint=false",body.toString(),visitorId));
-  validateLivePlayer(response);
+  validateLivePlayer(response,channelId);if(!id.equals(response.getJSONObject("videoDetails").optString("videoId")))throw new IOException("라이브 재생 정보가 일치하지 않습니다");
   JSONObject streams=response.optJSONObject("streamingData");String master=streams==null?"":streams.optString("hlsManifestUrl");validateMediaUrl(master);
-  return audioRendition(request(master,null,null),master);
+  return new LiveInfo(id,channelId,audioRendition(request(master,null,null),master));
  }
  static JSONObject playerFromPage(String html)throws Exception{
   Matcher match=PLAYER.matcher(html);if(!match.find())throw new IOException("라이브 재생 정보를 찾지 못했습니다");
   Object value=new JSONTokener(html.substring(match.end())).nextValue();if(!(value instanceof JSONObject))throw new IOException("라이브 재생 정보 형식 오류");return (JSONObject)value;
  }
- static void validateLivePlayer(JSONObject response)throws Exception{
+ static void validateLivePlayer(JSONObject response)throws Exception{validateLivePlayer(response,CHANNEL_ID);}
+ static void validateLivePlayer(JSONObject response,String channelId)throws Exception{
   JSONObject status=response.optJSONObject("playabilityStatus"),details=response.optJSONObject("videoDetails");
-  if(status==null||!"OK".equals(status.optString("status"))||details==null||!CHANNEL_ID.equals(details.optString("channelId"))||!details.optBoolean("isLive"))throw new IOException("연합뉴스TV가 현재 라이브 상태가 아닙니다");
+  if(status==null||!"OK".equals(status.optString("status"))||details==null||!channelId.equals(details.optString("channelId"))||!details.optBoolean("isLive"))throw new IOException("현재 공개 방송 중인 라이브가 아닙니다");
  }
  static Map<String,String> attributes(String line){
   Map<String,String> result=new HashMap<>();Matcher match=ATTRIBUTE.matcher(line.substring(line.indexOf(':')+1));

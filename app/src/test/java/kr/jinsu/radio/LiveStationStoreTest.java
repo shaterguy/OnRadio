@@ -1,0 +1,27 @@
+package kr.jinsu.radio;
+
+import android.content.*;
+import org.junit.*;
+import org.junit.runner.RunWith;
+import org.robolectric.*;
+import org.robolectric.annotation.*;
+import java.util.*;
+import static org.junit.Assert.*;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk=28,manifest=Config.NONE)
+@ConscryptMode(ConscryptMode.Mode.OFF)
+public class LiveStationStoreTest {
+ SharedPreferences prefs;
+ @Before public void create(){prefs=RuntimeEnvironment.getApplication().getSharedPreferences("radio",0);prefs.edit().clear().commit();LiveStationStore.reload(prefs);}
+ @After public void clear(){prefs.edit().clear().commit();RadioData.setLiveOverrides(Collections.emptyList());}
+ YoutubeLiveAudio.LiveInfo info(String video){return new YoutubeLiveAudio.LiveInfo(video,"UCaaaaaaaaaaaaaaaaaaaaaa","https://manifest.googlevideo.com/audio.m3u8");}
+ @Test public void registrationRoundTripKeepsNameOrderAndPublicIdentifiers()throws Exception{RadioData.Station a=LiveStationStore.save(prefs,null,"내 방송",info("abcdefghijk"));assertTrue(a.id.startsWith("user_"));assertEquals(18,RadioData.stations().size());RadioData.setLiveOverrides(Collections.emptyList());LiveStationStore.reload(prefs);assertEquals("내 방송",RadioData.find(a.id).name);assertEquals("abcdefghijk",RadioData.find(a.id).code);for(String order:new String[]{"frequency","frequency_desc","name","name_desc"}){List<RadioData.Station> rows=RadioData.orderedStations(order);assertEquals(a.id,rows.get(rows.size()-1).id);}assertFalse(prefs.getString(LiveStationStore.KEY,"").contains("googlevideo"));assertFalse(prefs.getString(LiveStationStore.KEY,"").contains("visitor"));}
+ @Test public void builtinAddressEditKeepsIdentityAndFavoriteAfterReload()throws Exception{prefs.edit().putStringSet("favorites",new HashSet<>(Arrays.asList("yonhap"))).commit();RadioData.Station old=RadioData.find("yonhap");RadioData.Station saved=LiveStationStore.save(prefs,"yonhap","내 뉴스",info("abcdefghijk"));assertEquals("yonhap",saved.id);assertFalse(RadioData.matchesCurrent(old));LiveStationStore.reload(prefs);assertEquals("abcdefghijk",RadioData.find("yonhap").code);assertEquals("내 뉴스",RadioData.find("yonhap").name);assertTrue(prefs.getStringSet("favorites",Collections.emptySet()).contains("yonhap"));assertEquals(17,RadioData.stations().size());}
+ @Test public void duplicateAndInvalidNameNeverChangeSavedData()throws Exception{LiveStationStore.save(prefs,null,"첫 방송",info("abcdefghijk"));String before=prefs.getString(LiveStationStore.KEY,"");for(String name:new String[]{""," \n ","다른 이름"}){try{LiveStationStore.save(prefs,null,name,info("abcdefghijk"));fail();}catch(Exception expected){assertEquals(before,prefs.getString(LiveStationStore.KEY,""));}}try{LiveStationStore.save(prefs,null,"중복",info("aZyD6EPl6KU"));fail();}catch(Exception expected){assertEquals(before,prefs.getString(LiveStationStore.KEY,""));}}
+ @Test public void corruptedStorageIsPreservedOnFailedWrite()throws Exception{prefs.edit().putString(LiveStationStore.KEY,"broken json").commit();LiveStationStore.reload(prefs);assertEquals(17,RadioData.stations().size());try{LiveStationStore.save(prefs,null,"새 방송",info("abcdefghijk"));fail();}catch(Exception expected){assertEquals("broken json",prefs.getString(LiveStationStore.KEY,""));}}
+ @Test public void customRemovalCleansFavoriteAndRejectsLateEdit()throws Exception{RadioData.Station row=LiveStationStore.save(prefs,null,"내 방송",info("abcdefghijk"));prefs.edit().putStringSet("favorites",new HashSet<>(Arrays.asList(row.id,"kbs25"))).commit();LiveStationStore.remove(prefs,row.id);assertEquals(17,RadioData.stations().size());assertFalse(prefs.getStringSet("favorites",Collections.emptySet()).contains(row.id));assertTrue(prefs.getStringSet("favorites",Collections.emptySet()).contains("kbs25"));try{LiveStationStore.save(prefs,row.id,"늦은 결과",info("abcdefghijk"));fail();}catch(Exception expected){assertEquals(17,RadioData.stations().size());}}
+ @Test public void urlNormalizationRejectsUntrustedHostsAndKeepsOnlyVideoId()throws Exception{for(String value:new String[]{"https://youtu.be/aZyD6EPl6KU?si=test","https://www.youtube.com/watch?v=aZyD6EPl6KU&list=abc&t=3","https://m.youtube.com/live/aZyD6EPl6KU","youtu.be/aZyD6EPl6KU"})assertEquals("https://www.youtube.com/watch?v=aZyD6EPl6KU",YoutubeLiveAudio.canonicalPage(value));for(String value:new String[]{"https://youtube.com.attacker.invalid/watch?v=aZyD6EPl6KU","https://user@youtube.com/watch?v=aZyD6EPl6KU","http://youtube.com/watch?v=aZyD6EPl6KU","https://youtube.com:444/watch?v=aZyD6EPl6KU","https://youtu.be/../aZyD6EPl6KU","https://youtube.com/playlist?list=abc","file:///etc/passwd"}){try{YoutubeLiveAudio.canonicalPage(value);fail(value);}catch(Exception expected){}}}
+ @Test public void nonFavoriteNavigationStaysWithinSourceAndFavoritesAreShared(){assertEquals("kbs25",ChannelNavigation.next("sbspower",1,false,Collections.emptySet()).id);assertEquals("ytnlive",ChannelNavigation.next("yonhap",1,false,Collections.emptySet()).id);assertEquals("yonhap",ChannelNavigation.next("mbcnews",1,false,Collections.emptySet()).id);Set<String> favorites=new HashSet<>(Arrays.asList("kbs25","mbcnews"));assertEquals("mbcnews",ChannelNavigation.next("kbs25",1,true,favorites).id);assertEquals("kbs25",ChannelNavigation.next("mbcnews",1,true,favorites).id);}
+ @Test public void fmIdentityCannotBeOverridden()throws Exception{try{LiveStationStore.save(prefs,"kbs25","가짜 라디오",info("abcdefghijk"));fail();}catch(Exception expected){assertEquals("kbs",RadioData.find("kbs25").kind);}}
+}

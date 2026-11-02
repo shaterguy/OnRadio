@@ -106,3 +106,19 @@ StationListPositionTest는 실제 행 클릭 경로를 사용하고 네트워크
 dev16→dev17 applicationId 및 서명 인증서 일치, versionCode 증가(16→17), minSdk 26/targetSdk 36, zipalign과 최종 복사 APK byte/SHA 일치를 확인했습니다. 검증 모드는 INDEPENDENT이며 별도 검증자가 현재 diff·실제 live/codec·최종 테스트 원본을 검토했습니다. 실제 Android 단말 설치·스피커 출력·물리 블루투스 조작·6시간 이상 연속 재생은 ADB 기기 부재로 미검증입니다. 공개 미디어 데이터 검증을 실기기 청취 성공으로 표시하지 않습니다.
 
 범위는 요청한 연합뉴스TV live audio와 필요한 수명/취소 처리·UI·회귀시험·버전/문서입니다. 외부 입력은 고정된 공식 채널만 허용하고 API/redirect/media는 YouTube·Googlevideo HTTPS로 제한하며 12초 타임아웃·5MB 응답 상한을 적용합니다. visitor 및 서명된 주소는 소스·장기 저장·로그에 넣지 않습니다. PR-003/008에 따라 identity 참조 검색 및 실제 공개 응답 구조를 선행 확인했습니다. 공개 player 응답 구조 변경에 따른 추후 추출기 유지보수 가능성은 남습니다.
+
+## 0.1.0-dev18 사용자 라이브 등록·수정과 3탭
+
+사용자 요청은 YTN(aZyD6EPl6KU)·MBC뉴스(q9bM12ucTIY) 추가, 채널명/주소 직접 등록 메뉴, 기존 라이브의 재생화면 주소 수정, 라디오/유튜브 라이브 탭 분리와 공통 즐겨찾기입니다. 기준 소스는 dev17 344c54e1605f63bc03bf53ca51b4c2b8e2bff613입니다. 라디오 14개, 기본 라이브 3개(연합/YTN/MBC), 사용자 등록순 목록을 분리했습니다. 탭 전환만으로 재생을 바꾸지 않고 일반 채널 이동은 현재 종류, 즐겨찾기는 공통 pool을 순환합니다. live 탭의 FM 정렬 헤더를 숨깁니다.
+
+LiveStationStore는 stable id/이름/공개 영상 id/채널 id만 SharedPreferences에 원자적으로 저장합니다. 기본 live는 id를 유지한 override, 신규 live는 user_UUID입니다. 중복 영상·잘못된 이름·보호된 FM id·손상된 기존 저장소를 거절하며 실패 시 원본을 덮어쓰지 않습니다. 기존/등록 live는 재생화면에서 수정하고 등록 항목은 삭제할 수 있습니다. 서비스 단독 시작도 같은 catalog를 읽습니다. 저장만으로 자동 재생하지 않으며 선택 항목 수정/삭제는 pause→stop→clear로 재생 희망값까지 해제합니다.
+
+입력 URL은 HTTPS YouTube 호스트와 영상/채널-live 경로로 정규화하고 실제 공개 현재 live·채널 정체성과 audio-only HLS를 확인합니다. Googlevideo HTTPS/리디렉션/크기/시간 제한은 보존했습니다. 검증 중 이름/주소/버튼을 잠그며 취소·onPause·회전·새 dialog·dead/ticket mismatch는 저장을 막습니다. 회전과 상태 복원은 입력 초안을 유지하고 자동 재검증하지 않습니다. service는 resolve 결과의 id/code/channel/name을 현재 catalog와 대조하여 수정/삭제 전 구주소의 늦은 응답을 취소하고 pending future를 종료합니다.
+
+최종 ONRADIO_REG_STOPFIX_20261103_11에서 assembleDebug·lintDebug(오류 0개)·전체 unit/Robolectric 검사 112개를 통과했습니다. 2개 명시적 네트워크 검사는 이 최종 회귀에서 생략했습니다. generic resolver/catalog가 동일한 첫 후보 ONRADIO_REG_BUILD_20261103_06의 실제3개 inspect→audio media playlist 성공 증거와 ONRADIO_REG_AUDIOPROOF_20261103_07의 AAC-only 세그먼트 검사를 재사용합니다. 각 segment는 연합 80,645바이트 / YTN 81,872바이트 / MBC 81,341바이트이며 모두 AAC audio 1개·video 0개입니다. 첫 live 검사 XML도 별도 보존했습니다.
+
+등록/재실행·기본 주소 수정·stable id/즐겨찾기 유지·중복/손상 저장소·삭제 후 늦은 수정 거부·URL 유사호스트/credentials/port/경로 거부·FM 보호·3탭/공통 즐겨찾기·종류별 순환·취소/onPause/회전/새창 늦은 결과·검증 중 잠금 및 실패 복원·360dp 단일행 48dp 탭·live 헤더 숨김을 검사합니다. 실제 ExoPlayer의 playWhenReady=true/item1에서 수정/삭제 helper 후 wanted=false/item0/IDLE을 확인했습니다. 기존 FM·다크모드·반응형·목록 위치·미디어 세션 회귀도 통과했습니다.
+
+독립 검증자가 실제 diff/테스트/빌드·라이브·코덱 원본을 대조했고, 지적된 입력 변경 경쟁·오해를 주는 live 정렬 헤더·stop 이후 wanted 잔존 문제를 수정했습니다. 검증 모드는 INDEPENDENT입니다. dev17과 동일 applicationId/서명 및 versionCode 17→18 증가, minSdk26/targetSdk36, apksigner·zipalign·canonical/전달 APK 바이트 일치를 확인했습니다. ADB 실기기 설치·장시간 청취·물리 블루투스 조작은 미검증이며 Robolectric/실제 미디어 수신 검증과 구분합니다. 개인정보·계정·추가 권한·의존성·중계서버 확대는 없습니다.
+
+DEV18 independent review: PASS_WITH_RESIDUAL_RISK; security PASS; scope IN_SCOPE. The reviewer directly read the final build result and reviewed the final source, including input locking, live-only header, and pause-before-stop/clear corrections. Physical installation, extended listening, and physical Bluetooth remain unverified.

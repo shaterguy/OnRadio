@@ -20,9 +20,11 @@ public class YoutubeLiveAudioTest {
  @Test(expected=IOException.class)public void rejectsArbitraryInputUrl()throws Exception{YoutubeLiveAudio.resolve("https://other.invalid/");}
  @Test public void actualPublicLiveProducesAudioMediaPlaylist()throws Exception{
   Assume.assumeTrue(Boolean.getBoolean("radioYoutubeLiveCheck"));
-  String url=YoutubeLiveAudio.resolve("6QZ_qc75ihU"),media=YoutubeLiveAudio.request(url,null,null);
-  assertTrue(media.startsWith("#EXTM3U"));assertTrue(media.contains("#EXTINF:"));assertFalse(media.contains("#EXT-X-STREAM-INF:"));
-  Path out=Paths.get(System.getProperty("radioYoutubeEvidencePath","build/yonhap-live"));Files.createDirectories(out);Files.write(out.resolve("stream.url"),url.getBytes(java.nio.charset.StandardCharsets.UTF_8));Files.write(out.resolve("media.m3u8"),media.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-  System.out.println("PUBLIC_YONHAP_AUDIO_PLAYLIST_OK");
+  for(RadioData.Station station:RadioData.STATIONS)if(!station.hasPrograms()){
+   YoutubeLiveAudio.LiveInfo info=YoutubeLiveAudio.inspect(station.website);assertEquals(station.channelId,info.channelId);
+   String media=YoutubeLiveAudio.request(info.audioUrl,null,null);assertTrue(media.startsWith("#EXTM3U"));assertTrue(media.contains("#EXTINF:"));assertFalse(media.contains("#EXT-X-STREAM-INF:"));
+   Path out=Paths.get(System.getProperty("radioYoutubeEvidencePath","build/yonhap-live"),station.id);Files.createDirectories(out);Files.write(out.resolve("stream.url"),info.audioUrl.getBytes(java.nio.charset.StandardCharsets.UTF_8));Files.write(out.resolve("media.m3u8"),media.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+   System.out.println("PUBLIC_AUDIO_PLAYLIST_OK "+station.id);
+  }
  }
 }
