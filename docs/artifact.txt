@@ -1,7 +1,8 @@
-OnRadio-v0.1.0-dev2.apk
-size=4886792
-sha256=68c76971686c65761d16c6e7decb48cdb1ef0d1a9f6c955bb34c1c3705c27ba4
+OnRadio-v0.1.0-dev3.apk
+size=4726100
+sha256=72d4cc19f9080a17d7074b67df63b480fca0f75ffb28359f54ed8c07fbc85418
 package=kr.jinsu.radio.dev
-versionCode=2
-versionName=0.1.0-dev2
+versionCode=3
+versionName=0.1.0-dev3
 signingCertificateSha256=803da54595c44cd85bc587037f3ed8a3d4ce4290236c732c6c54b87d6ea11200
+unitTestsPassed=20
