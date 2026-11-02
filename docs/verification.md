@@ -35,4 +35,8 @@ DEV3 자동검증: 정렬·중앙 좌표·오디오 출력 정책을 포함한 �
 
 기존 48dp 부분 이동 후 화면 교체가 갑자기 사라지는 원인이었다. 재생바 위 영역을 FrameLayout으로 분리하고 header/body를 한 panel로 전체 높이 이동한다. 목록을 Bitmap 배경으로 유지해 이동 중 빈 화면을 방지한다. 600ms AccelerateDecelerate 전환, 투명도 효과 제거, pre-draw 이후 높이 측정, generation으로 예약 콜백 무효화, 재구성/종료 취소를 검토한다. 네트워크/오디오 구현은 변경하지 않는다. 실기기 체감과 렌더링은 미검증이다.
 
-DEV5 결과: assembleDebug/lintDebug/testDebugUnitTest 성공. 단위 테스트 20건 통과, 네트워크 실시간 테스트 1건 기본 제외. apksigner/zipalign, versionCode 5 및 기존 서명 일치 확인. 독립 검토에서 목록 복귀 시 스크롤 위치 튐을 발견해 캡처 위치 저장/레이아웃 후 복원으로 수정하고 재검토 통과했다. 실기기 렌더링은 미검증이다.
+## 0.1.0-dev6 검증 범위
+
+변경은 PLAYER_TRANSITION_MS 600 → 420 및 개발 버전 증가이다. 열기·닫기 공통 상수를 사용하며 이전 전체 높이 이동/목록 위치 복원/애니메이션 취소 로직은 동일하다. 420/600=0.7을 확인한다. 실제 단말 애니메이션 체감은 미검증이다.
+
+DEV6 결과: assembleDebug/lintDebug/testDebugUnitTest 성공. 단위 테스트 20건 통과, 실시간 API 1건 기본 제외. 기존 서명 일치 및 native apksigner/zipalign 검사 통과. 독립 검토에서 600×0.7=420ms와 공통 열기/닫기 상수 적용 및 기존 동작 보존을 확인했다.
