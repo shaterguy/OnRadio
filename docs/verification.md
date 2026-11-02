@@ -31,4 +31,8 @@ DEV3 자동검증: 정렬·중앙 좌표·오디오 출력 정책을 포함한 �
 
 독립 검토에서 닫기 도중 채널 변경·즐겨찾기·회전으로 화면 재구성 시 뒤로가기 목적지가 취소되는 문제를 발견했다. build() 시작에서 닫는 중이면 목록 화면을 먼저 확정하도록 수정했다.
 
-DEV4 결과: assembleDebug/lintDebug/testDebugUnitTest 성공, 단위 테스트 20건 통과(실시간 API 1건 기본 제외). native apksigner/zipalign 검사 및 패키지 versionCode 4, 기존 서명 일치 확인. 독립 재검토에서 닫기 중 재구성 목적지 보존 수정 확인.
+## 0.1.0-dev5 검증 범위
+
+기존 48dp 부분 이동 후 화면 교체가 갑자기 사라지는 원인이었다. 재생바 위 영역을 FrameLayout으로 분리하고 header/body를 한 panel로 전체 높이 이동한다. 목록을 Bitmap 배경으로 유지해 이동 중 빈 화면을 방지한다. 600ms AccelerateDecelerate 전환, 투명도 효과 제거, pre-draw 이후 높이 측정, generation으로 예약 콜백 무효화, 재구성/종료 취소를 검토한다. 네트워크/오디오 구현은 변경하지 않는다. 실기기 체감과 렌더링은 미검증이다.
+
+DEV5 결과: assembleDebug/lintDebug/testDebugUnitTest 성공. 단위 테스트 20건 통과, 네트워크 실시간 테스트 1건 기본 제외. apksigner/zipalign, versionCode 5 및 기존 서명 일치 확인. 독립 검토에서 목록 복귀 시 스크롤 위치 튐을 발견해 캡처 위치 저장/레이아웃 후 복원으로 수정하고 재검토 통과했다. 실기기 렌더링은 미검증이다.
