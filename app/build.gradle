@@ -1,0 +1,16 @@
+plugins { id 'com.android.application' }
+android {
+ namespace 'kr.jinsu.radio'
+ compileSdk 36
+ defaultConfig { applicationId 'kr.jinsu.radio.dev'; minSdk 26; targetSdk 36; versionCode 1; versionName '0.1.0-dev1' }
+ compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+ buildTypes { debug { debuggable true } }
+}
+dependencies {
+ implementation 'androidx.media3:media3-exoplayer:1.8.0'
+ implementation 'androidx.media3:media3-exoplayer-hls:1.8.0'
+ implementation 'androidx.media3:media3-session:1.8.0'
+}
+dependencies { testImplementation 'junit:junit:4.13.2' }
+dependencies { testImplementation 'org.json:json:20240303' }
+android { testOptions { unitTests.all { systemProperty 'radioLiveCheck', project.findProperty('radioLiveCheck') ?: 'false'; testLogging { showStandardStreams = true } } } }
