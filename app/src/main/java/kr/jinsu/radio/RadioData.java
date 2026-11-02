@@ -26,11 +26,14 @@ public final class RadioData {
   new Station("kbs23","KBS 3라디오","KBS","104.9","장애인과 사회적 약자를 위한 정보와 문화 채널","kbs","23","https://radio.kbs.co.kr/","https://schedule.kbs.co.kr/"),
   new Station("cbs939","CBS 음악FM","CBS","93.9","좋은 음악과 이야기를 함께하는 음악 전문 채널","static","https://m-aac.cbs.co.kr/mweb_cbs939/_definst_/cbs939.stream/playlist.m3u8","https://www.cbs.co.kr/radio/","https://www.cbs.co.kr/schedule?type=musicFm"),
   new Station("cbs981","CBS 표준FM","CBS","98.1","뉴스와 시사, 문화와 음악을 전하는 채널","static","https://m-aac.cbs.co.kr/mweb_cbs981/_definst_/cbs981.stream/playlist.m3u8","https://www.cbs.co.kr/radio/","https://www.cbs.co.kr/schedule?type=fm"),
-  new Station("ebs","EBS FM","EBS","104.5","외국어와 교양, 배움이 있는 교육 라디오","static","https://ebsonair.ebs.co.kr/fmradiofamilypc/familypc1m/playlist.m3u8","https://home.ebs.co.kr/efm","https://www.ebs.co.kr/schedule?channel=radio")
+  new Station("ytn","YTN 라디오","YTN","94.5","뉴스와 시사, 생활정보를 전하는 YTN 라디오","static","https://radiolive.ytn.co.kr/radio/_definst_/20211118_fmlive/playlist.m3u8","https://radio.ytn.co.kr/","https://radio.ytn.co.kr/schedule/daily.php"),
+  new Station("tbs","TBS FM","TBS","95.1","서울과 수도권의 교통·생활·문화정보를 전하는 라디오","static","https://cdnfm.tbs.seoul.kr/tbs/_definst_/tbs_fm_web_360.smil/playlist.m3u8","http://tbs.seoul.kr/fm/index.do","http://tbs.seoul.kr/fm/schedule.do"),
+  new Station("ebs","EBS FM","EBS","104.5","외국어와 교양, 배움이 있는 교육 라디오","static","https://ebsonair.ebs.co.kr/fmradiofamilypc/familypc1m/playlist.m3u8","https://home.ebs.co.kr/efm","https://www.ebs.co.kr/schedule?channelCd=RADIO&onor=RADIO")
  ));
+ public static List<Station> orderedStations(String order){ArrayList<Station> sorted=new ArrayList<>(STATIONS);java.text.Collator names=java.text.Collator.getInstance(Locale.KOREAN);names.setStrength(java.text.Collator.SECONDARY);Comparator<Station> byName=(a,b)->names.compare(a.name,b.name);sorted.sort("name".equals(order)?byName:Comparator.comparingDouble((Station a)->Double.parseDouble(a.fm)).thenComparing(byName));return sorted;}
  public static Station find(String id){for(Station s:STATIONS)if(s.id.equals(id))return s;return STATIONS.get(0);}
  public static String get(String url) throws Exception {
-  URL u=new URL(url); if(!u.getProtocol().equals("https"))throw new IOException("안전하지 않은 방송 주소");
+  URL u=new URL(url); if(!u.getProtocol().equals("https")&&!(u.getProtocol().equals("http")&&u.getHost().equals("tbs.seoul.kr")))throw new IOException("안전하지 않은 방송 주소");
   HttpURLConnection c=(HttpURLConnection)u.openConnection();c.setConnectTimeout(12000);c.setReadTimeout(12000);c.setRequestProperty("User-Agent","Mozilla/5.0 OnRadio/0.1");c.setRequestProperty("Referer",url.contains("imbc.com")?"https://mini.imbc.com/":url.contains("sbs.co.kr")?"https://www.sbs.co.kr/":url.contains("cbs.co.kr")?"https://www.cbs.co.kr/":"https://radio.kbs.co.kr/");
   try {int status=c.getResponseCode();if(status!=200)throw new IOException("방송 서버 응답 "+status); ByteArrayOutputStream b=new ByteArrayOutputStream();try(InputStream in=c.getInputStream()){byte[] buf=new byte[8192];int n;while((n=in.read(buf))!=-1){b.write(buf,0,n);if(b.size()>5_000_000)throw new IOException("응답 크기 초과");}}return b.toString(StandardCharsets.UTF_8.name()).replace("\uFEFF","");}finally{c.disconnect();}
  }
@@ -49,11 +52,38 @@ public final class RadioData {
   public boolean current(long now){return start<=now&&now<end;}
   public String time(){DateTimeFormatter f=DateTimeFormatter.ofPattern("HH:mm");return f.format(Instant.ofEpochMilli(start).atZone(SEOUL))+" ∼ "+f.format(Instant.ofEpochMilli(end).atZone(SEOUL));}
  }
- static String clean(String s){if(s==null||s.equals("null"))return "";return s.replaceAll("<[^>]*>"," ").replace("&amp;","&").replace("&quot;","\"").replace("&#39;", "'").replace("&lt;","<").replace("&gt;",">").replaceAll("\\s+"," ").trim();}
+ static String clean(String s){if(s==null||s.equals("null"))return "";return s.replaceAll("</?[A-Za-z][^>]*>"," ").replace("&amp;","&").replace("&quot;","\"").replace("&#39;", "'").replace("&lt;","<").replace("&gt;",">").replaceAll("\\s+"," ").trim();}
  static long stamp(LocalDate date,String time){String t=time.replace(":","");if(t.length()<4)throw new IllegalArgumentException("시간 형식");int h=Integer.parseInt(t.substring(0,2)),m=Integer.parseInt(t.substring(2,4));return date.plusDays(h/24).atTime(h%24,m).atZone(SEOUL).toInstant().toEpochMilli();}
+ static List<Program> slots(List<String[]> rows,LocalDate date,String link){
+  ArrayList<Program> out=new ArrayList<>();if(rows.isEmpty())return out;ArrayList<Long> starts=new ArrayList<>();LocalDate day=date;long previous=-1;
+  for(String[] r:rows){long start=stamp(day,r[0]);if(start<=previous){day=day.plusDays(1);start=stamp(day,r[0]);}starts.add(start);previous=start;}
+  long finalEnd=stamp(day,rows.get(0)[0]);if(finalEnd<=previous)finalEnd+=86400000;
+  for(int i=0;i<rows.size();i++){String[] r=rows.get(i);out.add(new Program(r[1],r.length>2?r[2]:"","",link,starts.get(i),i+1<rows.size()?starts.get(i+1):finalEnd));}return out;
+ }
+ static List<Program> parseYtnSchedule(String html,LocalDate date){
+  ArrayList<String[]> rows=new ArrayList<>();java.util.regex.Matcher m=java.util.regex.Pattern.compile("(?is)<div\\s+class=[\"']time[\"']\\s*>(\\d{2}:\\d{2})\\s*-\\s*</div>\\s*<div\\s+class=[\"']name[\"']\\s*>(.*?)</div>").matcher(html);
+  while(m.find())rows.add(new String[]{m.group(1),clean(m.group(2))});return slots(rows,date,"https://radio.ytn.co.kr/schedule/daily.php");
+ }
+ static List<Program> parseTbsSchedule(String html,LocalDate date){
+  ArrayList<String[]> rows=new ArrayList<>();java.util.regex.Matcher tr=java.util.regex.Pattern.compile("(?is)<tr\\b[^>]*>(.*?)</tr>").matcher(html);
+  while(tr.find()){ArrayList<String> cells=new ArrayList<>();java.util.regex.Matcher td=java.util.regex.Pattern.compile("(?is)<td\\b[^>]*>(.*?)</td>").matcher(tr.group(1));while(td.find())cells.add(clean(td.group(1)));if(cells.size()>=2&&cells.get(0).matches("\\d{2}:\\d{2}")&&!cells.get(1).isEmpty())rows.add(new String[]{cells.get(0),cells.get(1),cells.size()>2?cells.get(2):""});}
+  return slots(rows,date,"http://tbs.seoul.kr/fm/schedule.do");
+ }
+ static List<Program> parseEbsSchedule(String html,LocalDate date){
+  int begin=html.indexOf("class=\"timeline\"");if(begin<0)return Collections.emptyList();int end=html.indexOf("</ul>",begin);String timeline=html.substring(begin,end<0?html.length():end);ArrayList<String[]> rows=new ArrayList<>();
+  java.util.regex.Matcher m=java.util.regex.Pattern.compile("(?is)<div\\s+class=[\"']time[\"']\\s*>\\s*<span>(\\d{2}:\\d{2})</span>.*?<strong>(.*?)</strong>").matcher(timeline);
+  while(m.find())rows.add(new String[]{m.group(1),clean(m.group(2))});return slots(rows,date,"https://www.ebs.co.kr/schedule?channelCd=RADIO&onor=RADIO");
+ }
  public static List<Program> schedule(Station s,LocalDate date)throws Exception {
   ArrayList<Program> list=new ArrayList<>();
-  if(s.kind.equals("kbs")){
+  if(s.id.equals("ebs")){
+   LocalDate broadcastDate=ZonedDateTime.now(SEOUL).getHour()<5?date.minusDays(1):date;
+   list.addAll(parseEbsSchedule(get("https://www.ebs.co.kr/onair/scheduleNew?channelCodeString=RADIO"),broadcastDate));
+  }else if(s.id.equals("ytn")){
+   for(LocalDate d:Arrays.asList(date.minusDays(1),date))list.addAll(parseYtnSchedule(get("https://radio.ytn.co.kr/schedule/daily.php?ymd="+d),d));
+  }else if(s.id.equals("tbs")){
+   list.addAll(parseTbsSchedule(get("http://tbs.seoul.kr/fm/schedule.do?onDate="+date.format(DateTimeFormatter.BASIC_ISO_DATE)),date));
+  }else if(s.kind.equals("kbs")){
    String from=date.minusDays(1).format(DateTimeFormatter.BASIC_ISO_DATE),to=date.format(DateTimeFormatter.BASIC_ISO_DATE);
    JSONArray days=new JSONArray(get("https://static.api.kbs.co.kr/mediafactory/v1/schedule/weekly?local_station_code=00&channel_code="+s.code+"&program_planned_date_from="+from+"&program_planned_date_to="+to));
    for(int d=0;d<days.length();d++){JSONObject day=days.getJSONObject(d);if(!s.code.equals(day.optString("channel_code")))continue;JSONArray a=day.optJSONArray("schedules");if(a==null)continue;

@@ -1,8 +1,8 @@
 # 온라디오
 
-국내 FM 채널을 인터넷 스트리밍으로 듣는 간결한 Android 앱입니다.
+국내 FM 14개 채널을 인터넷 스트리밍으로 듣는 간결한 Android 앱입니다.
 
-방송 목록과 검색, 기기에 보존되는 즐겨찾기, 스크롤과 독립된 하단 컨트롤러, 별도 재생화면을 제공합니다. 재생화면에 채널/주파수/현재 프로그램/방송시간/프로그램 소개를 표시합니다. KBS·MBC·SBS·CBS 공식 편성 API로 한국시간 당일 편성을 조회하며, 미제공 채널은 공식 편성표로 연결합니다. 화면을 꺼도 Media3 세션 서비스에서 재생하며 미디어 알림·오디오 포커스·이어폰 분리를 지원합니다.
+방송 목록과 검색, 기기에 보존되는 즐겨찾기, 스크롤과 독립된 하단 컨트롤러, 별도 재생화면을 제공합니다. 주파수순(기본)과 방송국 이름순으로 정렬하며 선택을 기기에 저장합니다. 재생화면에 채널/주파수/현재 프로그램/방송시간/프로그램 소개를 표시합니다. KBS·MBC·SBS·CBS·EBS·TBS·YTN의 공식 편성 데이터로 한국시간 당일 편성을 조회합니다. 목록에도 현재 프로그램명과 방송시간을 표시합니다. 프로그램 정보를 조회하지 못하면 조회 상태를 표시합니다. 화면을 꺼도 Media3 세션 서비스에서 재생하며 미디어 알림·오디오 포커스·이어폰 분리를 지원합니다.
 
 방송 주소는 KBS·MBC·SBS의 공식 스트림 발급 API에서 매번 새로 받습니다. 계정, 자체 중계서버, 유료 API, 녹음 기능은 없습니다. FM 수신칩을 사용하지 않으며 통신 데이터가 필요합니다.
 
@@ -23,6 +23,8 @@ Termux에서는 `-Pandroid.aapt2FromMavenOverride=/data/data/com.termux/files/us
 - MBC: https://mini.imbc.com/ 및 https://sminiplay.imbc.com/
 - SBS: https://apis.sbs.co.kr/ 및 https://static.cloud.sbs.co.kr/
 - CBS: https://www.cbs.co.kr/ 및 https://m-aac.cbs.co.kr/
+- TBS: https://tbs.seoul.kr/ 및 https://cdnfm.tbs.seoul.kr/
+- YTN: https://radio.ytn.co.kr/ 및 https://radiolive.ytn.co.kr/
 - EBS: https://ebsonair.ebs.co.kr/
 
 디자인 참고: Unslop, Damir Sokolovsky (@heydamir), CC BY 4.0, https://github.com/heydamir/unslop . 방송사와 제휴 관계가 없는 개인용 클라이언트입니다.
