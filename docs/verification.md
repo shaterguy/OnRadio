@@ -65,4 +65,8 @@ ProgramTimeRow 시간은 글자에 필요한 폭만 사용하고 bar가 남은 �
 
 buildPlayer의 ScrollView는 body에서 weight1을 사용하고 편성표/홈페이지 row는 scroll의 형제 footer로 고정한다. 설명과 안내문은 스크롤에 남고 줄 수 제한·말줄임·삭제를 하지 않는다. 재생바는 기존 root 하단에 유지한다. 실제 MainActivity를 네트워크 없는 하위 클래스로 구성한 Robolectric 시험으로 설명 길이·스크롤·360dp 폭 및 560/820dp 높이에서 버튼 위치 고정과 설명 원문 유지, 재생바 비겹침을 검증한다. 실기기 렌더링은 미검증이다.
 
-DEV12 결과: build-a assembleDebug/lintDebug/testDebugUnitTest 성공, 총 46건 통과, 실시간 API 1건 기본 제외. PlayerLayoutTest 2건에서 실제 MainActivity의 고정 footer 위치/긴 설명 유지/스크롤 시 footer와 dock 고정/360dp 화면의 560·820dp 높이 비겹침을 검증했다. 독립 검토 및 native apksigner/zipalign·기존 서명·패키지/버전 검사 통과. 실제 단말 렌더링 미검증.
+## 0.1.0-dev13 검증 범위
+
+SwipeLayout은 방향 우세/터치 slop을 넘으면 자식 탭을 취소하고 부모가 처리하며, 48dp 이상 최종 이동 시 1회 동작한다. dock는 위 방향만 열고, player panel은 수평만 기존 step 경로를 사용한다. 다른 화면에서는 player swipe를 비활성화한다. 실제 MotionEvent dispatch와 clickable child/ScrollView, 실제 MainActivity에서 상향 열기·좌우 step 매핑을 Robolectric으로 검증한다. 실제 손가락 동작의 체감은 실기기 미검증이다.
+
+DEV13 결과: build-c assembleDebug/lintDebug/testDebugUnitTest 성공, 총 55건 통과, 실시간 API 1건 기본 제외. SwipeLayoutTest 7건은 실제 Button·ScrollView와 MotionEvent dispatch로 up/left/right·tap·취소·짧은 드래그·잘못된 방향·다중터치를 검사한다. PlayerLayoutTest 4건 중 2건은 실제 MainActivity의 dock 상향 열기와 좌우 공통step 경로를 검사한다. 테스트에서 일반 UP 직전 부모 setPressed(false)가 자식 클릭을 취소하는 결함을 발견해 intercept 단계에서 pressed를 변경하지 않도록 수정했다. 독립 검토에서 방향/다중터치·스크롤 분리를 점검했다. native apksigner/zipalign·기존 서명·패키지/버전 검사 통과. 실기기 손가락 제스처 체감은 미검증이다.

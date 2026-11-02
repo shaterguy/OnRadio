@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
  namespace 'kr.jinsu.radio'
  compileSdk 36
- defaultConfig { applicationId 'kr.jinsu.radio.dev'; minSdk 26; targetSdk 36; versionCode 12; versionName '0.1.0-dev12' }
+ defaultConfig { applicationId 'kr.jinsu.radio.dev'; minSdk 26; targetSdk 36; versionCode 13; versionName '0.1.0-dev13' }
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
  buildTypes { debug { debuggable true } }
 }
