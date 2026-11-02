@@ -40,4 +40,25 @@ public class LiveRegistrationUiTest {
 
  @Test public void sourceEditClearsActivePlayIntentAndPlaylist(){androidx.media3.exoplayer.ExoPlayer engine=new androidx.media3.exoplayer.ExoPlayer.Builder(activity).build();try{engine.setMediaItem(androidx.media3.common.MediaItem.fromUri("https://example.invalid/live.m3u8"));engine.setPlayWhenReady(true);assertTrue(engine.getPlayWhenReady());assertEquals(1,engine.getMediaItemCount());MainActivity.pauseAndClear(engine);assertFalse(engine.getPlayWhenReady());assertEquals(0,engine.getMediaItemCount());assertEquals(androidx.media3.common.Player.STATE_IDLE,engine.getPlaybackState());}finally{engine.release();}}
 
+
+ @Test @Config(sdk={26,28}) public void ordinaryInputsStayOutsideAutofillAcrossAddEditAndRebuild(){
+  assertEquals(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS,activity.getWindow().getDecorView().getImportantForAutofill());
+  assertExcludedInputs(activity.getWindow().getDecorView());
+  activity.showLiveEditor(null);assertLiveFormExcluded();
+  activity.liveNameInput.setText("내 뉴스");activity.liveUrlInput.setText("https://youtu.be/abcdefghijk");
+  activity.onConfigurationChanged(new Configuration(activity.getResources().getConfiguration()));
+  assertLiveFormExcluded();assertEquals("내 뉴스",activity.liveNameInput.getText().toString());assertEquals("https://youtu.be/abcdefghijk",activity.liveUrlInput.getText().toString());
+  activity.showLiveEditor(RadioData.find("yonhap"));assertLiveFormExcluded();assertEquals("연합뉴스TV",activity.liveNameInput.getText().toString());
+  activity.liveNameInput.requestFocus();activity.liveUrlInput.requestFocus();assertLiveFormExcluded();
+ }
+ void assertLiveFormExcluded(){
+  assertEquals(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS,activity.liveDialog.getWindow().getDecorView().getImportantForAutofill());
+  assertExcludedInputs(activity.liveDialog.getWindow().getDecorView());
+  assertFalse(activity.liveNameInput.getTransformationMethod() instanceof android.text.method.PasswordTransformationMethod);assertFalse(activity.liveUrlInput.getTransformationMethod() instanceof android.text.method.PasswordTransformationMethod);
+  assertEquals(android.text.InputType.TYPE_TEXT_VARIATION_URI,activity.liveUrlInput.getInputType()&android.text.InputType.TYPE_MASK_VARIATION);
+ }
+ void assertExcludedInputs(View view){
+  if(view instanceof EditText){assertFalse(view.isImportantForAutofill());assertNull(view.getAutofillHints());assertTrue(view.isFocusable());}
+  if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++)assertExcludedInputs(group.getChildAt(i));}
+ }
 }

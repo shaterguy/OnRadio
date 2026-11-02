@@ -122,3 +122,11 @@ LiveStationStore는 stable id/이름/공개 영상 id/채널 id만 SharedPrefere
 독립 검증자가 실제 diff/테스트/빌드·라이브·코덱 원본을 대조했고, 지적된 입력 변경 경쟁·오해를 주는 live 정렬 헤더·stop 이후 wanted 잔존 문제를 수정했습니다. 검증 모드는 INDEPENDENT입니다. dev17과 동일 applicationId/서명 및 versionCode 17→18 증가, minSdk26/targetSdk36, apksigner·zipalign·canonical/전달 APK 바이트 일치를 확인했습니다. ADB 실기기 설치·장시간 청취·물리 블루투스 조작은 미검증이며 Robolectric/실제 미디어 수신 검증과 구분합니다. 개인정보·계정·추가 권한·의존성·중계서버 확대는 없습니다.
 
 DEV18 independent review: PASS_WITH_RESIDUAL_RISK; security PASS; scope IN_SCOPE. The reviewer directly read the final build result and reviewed the final source, including input locking, live-only header, and pause-before-stop/clear corrections. Physical installation, extended listening, and physical Bluetooth remain unverified.
+
+## 0.1.0-dev19 일반 입력창의 자동완성 제외
+
+사용자가 일반 라이브 등록창에서 삼성패스 등록 안내가 표시된다고 보고했습니다. dev18에서는 일반 EditText의 autofill importance가 기본값이어서 자동완성 서비스의 추정 대상이었습니다. Android 공식 Autofill 최적화 계약에 따라 Activity와 별도 AlertDialog의 최상위 View를 NO_EXCLUDE_DESCENDANTS로, 검색·채널명·라이브 URL을 NO로 지정했습니다. 이름·주소 입력형식·붙여넣기·등록 데이터·재생 경로·즐겨찾기와 기기 전역 설정은 변경하지 않았습니다.
+
+SELF_CHECK / SECURITY_DELTA=NONE / IN_SCOPE. MainActivity의 변경분을 기준 소스와 재구성해 일치시켰으며 입력창 설정 5곳과 버전 표시만 변경했습니다. 빌드·린트 통과, 전체 116개 중 114개 통과·실제 네트워크 선택 검사 2개 미실행입니다. 신규 회귀시험은 API26/28에서 일반 입력창의 자동완성 제외, 등록·수정·포커스 이동·화면 재구성 후 초안 복원, 일반 텍스트/URI 입력형식을 검사했습니다. 첫 시험의 single-line 변환을 비밀번호 변환으로 취급한 assertion은 실제 비밀번호 변환 여부 검사로 정정했습니다. API35 Robolectric는 Linux aarch64 native runtime 미지원으로 실행되지 않았으며 이 결과를 제품 오류나 통과로 표시하지 않습니다. 실제 삼성패스 서비스의 안내가 사라지는지에 대한 단말 관찰은 미검증입니다.
+
+dev18과 동일 applicationId·서명, versionCode18→19, minSdk26/targetSdk36, apksigner와 zipalign을 확인했습니다. 전달 후보 OnRadio-v0.1.0-dev19.apk, 4718676 bytes, SHA-256 a52ca3e65dc72bafd4b0ca76d0faab85c27c5a4cb6ecfb906c0ff034855ea860.
