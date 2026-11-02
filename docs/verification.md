@@ -39,4 +39,8 @@ DEV3 자동검증: 정렬·중앙 좌표·오디오 출력 정책을 포함한 �
 
 변경은 PLAYER_TRANSITION_MS 600 → 420 및 개발 버전 증가이다. 열기·닫기 공통 상수를 사용하며 이전 전체 높이 이동/목록 위치 복원/애니메이션 취소 로직은 동일하다. 420/600=0.7을 확인한다. 실제 단말 애니메이션 체감은 미검증이다.
 
-DEV6 결과: assembleDebug/lintDebug/testDebugUnitTest 성공. 단위 테스트 20건 통과, 실시간 API 1건 기본 제외. 기존 서명 일치 및 native apksigner/zipalign 검사 통과. 독립 검토에서 600×0.7=420ms와 공통 열기/닫기 상수 적용 및 기존 동작 보존을 확인했다.
+## 0.1.0-dev7 검증 범위
+
+MainActivity.step()의 채널 이동 순서를 orderedStations(sortOrder)에서 orderedStations("frequency")로 변경한다. 목록 populate()는 저장된 정렬 기준을 유지한다. 즐겨찾기 필터/빈 목록 fallback/끝에서 순환하는 기존 정책은 유지한다. 재생바 previous/next가 step(-1)/step(1)을 호출하고 실제 play(station)를 수행함을 소스 검토한다.
+
+DEV7 결과: assembleDebug/lintDebug/testDebugUnitTest 성공. 단위 테스트 20건 통과, 실시간 API 1건 기본 제외. 기존 서명 일치 및 native apksigner/zipalign 검사 통과. 독립 소스 검토에서 이전/다음 → step → 주파수 정렬 → play 채널 변경과 목록 표시 정렬 유지 확인. 실기기 동작 미검증.
