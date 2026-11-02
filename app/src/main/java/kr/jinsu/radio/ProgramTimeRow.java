@@ -10,7 +10,7 @@ import android.widget.*;
 final class ProgramTimeRow extends LinearLayout {
  private final TextView time;private final ProgramProgressView progress;
  ProgramTimeRow(Context context){super(context);setOrientation(HORIZONTAL);setGravity(Gravity.CENTER_VERTICAL);setClickable(false);setFocusable(false);
-  time=new TextView(context);time.setTextColor(0xff676762);time.setTextSize(11);time.setIncludeFontPadding(false);time.setSingleLine();time.setEllipsize(TextUtils.TruncateAt.END);time.setAutoSizeTextTypeUniformWithConfiguration(8,11,1,TypedValue.COMPLEX_UNIT_SP);addView(time,new LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT));
+  time=new TextView(context);time.setTextColor(context.getColor(R.color.radio_secondary));time.setTextSize(11);time.setIncludeFontPadding(false);time.setSingleLine();time.setEllipsize(TextUtils.TruncateAt.END);time.setAutoSizeTextTypeUniformWithConfiguration(8,11,1,TypedValue.COMPLEX_UNIT_SP);addView(time,new LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT));
   progress=new ProgramProgressView(context);LayoutParams bar=new LayoutParams(0,dp(3),1);bar.setMarginStart(dp(6));bar.setMarginEnd(dp(4));addView(progress,bar);
   for(View child:new View[]{time,progress})child.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
  }

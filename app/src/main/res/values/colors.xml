@@ -1,0 +1,10 @@
+<resources>
+ <color name="radio_background">#FAFAF9</color>
+ <color name="radio_text">#20201E</color>
+ <color name="radio_secondary">#676762</color>
+ <color name="radio_accent">#A74724</color>
+ <color name="radio_line">#E2E1DC</color>
+ <color name="radio_raised">#F0EFEB</color>
+ <color name="radio_surface">#FFFFFF</color>
+ <color name="radio_ripple">#20000000</color>
+</resources>

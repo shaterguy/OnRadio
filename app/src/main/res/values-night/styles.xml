@@ -1,0 +1,15 @@
+<resources>
+ <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+  <item name="android:fontFamily">sans</item>
+  <item name="android:windowLightStatusBar">false</item>
+  <item name="android:colorAccent">@color/radio_accent</item>
+  <item name="android:colorBackground">@color/radio_background</item>
+  <item name="android:windowBackground">@color/radio_background</item>
+  <item name="android:textColorPrimary">@color/radio_text</item>
+  <item name="android:textColorSecondary">@color/radio_secondary</item>
+  <item name="android:colorControlNormal">@color/radio_secondary</item>
+  <item name="android:colorControlActivated">@color/radio_accent</item>
+  <item name="android:colorButtonNormal">@color/radio_raised</item>
+  <item name="android:windowActionModeOverlay">true</item>
+ </style>
+</resources>
