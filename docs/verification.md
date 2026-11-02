@@ -69,4 +69,10 @@ buildPlayer의 ScrollView는 body에서 weight1을 사용하고 편성표/홈페
 
 SwipeLayout은 방향 우세/터치 slop을 넘으면 자식 탭을 취소하고 부모가 처리하며, 48dp 이상 최종 이동 시 1회 동작한다. dock는 위 방향만 열고, player panel은 수평만 기존 step 경로를 사용한다. 다른 화면에서는 player swipe를 비활성화한다. 실제 MotionEvent dispatch와 clickable child/ScrollView, 실제 MainActivity에서 상향 열기·좌우 step 매핑을 Robolectric으로 검증한다. 실제 손가락 동작의 체감은 실기기 미검증이다.
 
-DEV13 결과: build-c assembleDebug/lintDebug/testDebugUnitTest 성공, 총 55건 통과, 실시간 API 1건 기본 제외. SwipeLayoutTest 7건은 실제 Button·ScrollView와 MotionEvent dispatch로 up/left/right·tap·취소·짧은 드래그·잘못된 방향·다중터치를 검사한다. PlayerLayoutTest 4건 중 2건은 실제 MainActivity의 dock 상향 열기와 좌우 공통step 경로를 검사한다. 테스트에서 일반 UP 직전 부모 setPressed(false)가 자식 클릭을 취소하는 결함을 발견해 intercept 단계에서 pressed를 변경하지 않도록 수정했다. 독립 검토에서 방향/다중터치·스크롤 분리를 점검했다. native apksigner/zipalign·기존 서명·패키지/버전 검사 통과. 실기기 손가락 제스처 체감은 미검증이다.
+## 0.1.0-dev14 검증 범위
+
+현재 앱 창의 너비 600dp 이상·높이 480dp 이상일 때 2열로 전환한다. 일반 휴대폰 가로 화면은 높이 조건으로 기존 단일 화면을 유지한다. 방송 목록은 40% 너비(최소 280dp·최대 420dp), 재생 본문·버튼은 최대 680dp, 하단 컨트롤은 최대 1120dp로 가운데 정렬한다. 목록과 상세의 ScrollView 및 편성표 갱신 대상은 분리한다. 재생 서비스와 연결을 재생성하지 않고 화면만 재구성한다.
+
+Robolectric에서 412×915·915×412dp 휴대폰, 673×841·841×673dp 폴드, 800×1280·1280×800dp 태블릿 크기를 검사한다. 열 분리, 본문 폭 제한, 설명 보존·독립 스크롤·버튼 고정, 편성표와 목록의 독립 정렬, 회전·접기 시 선택/정렬/검색/목록 위치 보존, 뒤로가기와 상세 영역 스와이프를 검증한다. 실제 폴드·태블릿 렌더링과 재생 중 물리 회전은 실기기 미검증이다.
+
+DEV14 최종 결과: assembleDebug·lintDebug 통과, 자동 검사 64개 통과·실시간 API 검사 1개 생략. 선택 채널 별표의 양쪽 동기화와 복원 pre-draw 전 재구성 시 목록 위치 보존도 회귀 검사한다. 실제 단말의 화면·제스처 체감은 미검증이다.
