@@ -43,4 +43,13 @@ DEV3 자동검증: 정렬·중앙 좌표·오디오 출력 정책을 포함한 �
 
 MainActivity.step()의 채널 이동 순서를 orderedStations(sortOrder)에서 orderedStations("frequency")로 변경한다. 목록 populate()는 저장된 정렬 기준을 유지한다. 즐겨찾기 필터/빈 목록 fallback/끝에서 순환하는 기존 정책은 유지한다. 재생바 previous/next가 step(-1)/step(1)을 호출하고 실제 play(station)를 수행함을 소스 검토한다.
 
-DEV7 결과: assembleDebug/lintDebug/testDebugUnitTest 성공. 단위 테스트 20건 통과, 실시간 API 1건 기본 제외. 기존 서명 일치 및 native apksigner/zipalign 검사 통과. 독립 소스 검토에서 이전/다음 → step → 주파수 정렬 → play 채널 변경과 목록 표시 정렬 유지 확인. 실기기 동작 미검증.
+## 0.1.0-dev8 검증 결과
+
+- Media3 1.8 ForwardingSimpleBasePlayer로 NEXT/PREVIOUS 및 MEDIA_ITEM 명령 4개를 일관되게 게시한다. 시간 건너뛰기 BACK/FORWARD 명령은 제거한다.
+- 앱의 방송 선택은 PLAY_STATION 커스텀 명령, 앱/시스템 이전·다음은 공통 seek 명령으로 서비스에 전달한다. 앱에는 URL resolver나 MediaItem 작성 경로가 남지 않는다. 서비스에서 주소 조회·스트림 교체·방송 메타데이터를 모두 담당한다.
+- 독립 검토에서 Activity→서비스 전달 사이의 오래된 set/replace MediaItem 경쟁구간을 발견하고, 서비스 단일 작성자로 바꿔 제거했다. pending target으로 연타 누적, 취소 future 완료, 요청 ticket/출력 세대, 즐겨찾기 prefs를 재검토했다.
+- 최종 build-c에서 assembleDebug/lintDebug/testDebugUnitTest 통과. 총 30건 통과(기존 20, 채널 탐색 6, Robolectric Media3 4), 실시간 API 1건 기본 제외.
+- RadioSessionPlayerTest는 실제 ExoPlayer를 감싼 단일/빈 timeline의 명령 노출 유지, 네 가지 seek→방향 매핑, 시간 건너뛰기 제거를 검증한다. 실제 MediaSession과 MediaController를 Activity 없이 연결해 이전·다음 콜백 도달을 확인했다.
+- Termux ARM 환경의 Conscrypt JNI 미지원은 테스트 전용 ConscryptMode.OFF로 공식 지원 BouncyCastle 공급자를 사용해 해결했다. 앱의 TLS 검증은 변경하지 않았다.
+- native apksigner/zipalign, 기존 개발 서명 일치, 패키지/버전 식별을 확인했다. 실제 기기 ADB 목록은 비어 있어 알림/잠금화면 렌더링·물리 이어폰 버튼·BT 전환은 미검증이다.
+- 공식 참조: https://developer.android.com/reference/androidx/media3/common/ForwardingSimpleBasePlayer , https://developer.android.com/media/media3/session/control-playback , https://robolectric.org/configuring/ .
