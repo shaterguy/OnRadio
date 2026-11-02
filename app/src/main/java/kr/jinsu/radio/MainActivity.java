@@ -25,6 +25,7 @@ public class MainActivity extends Activity {
  final Handler handler=new Handler(Looper.getMainLooper());final ExecutorService io=Executors.newFixedThreadPool(2);final ExecutorService scheduleIo=Executors.newFixedThreadPool(3);final Map<String,TextView> rowPrograms=new HashMap<>();final Map<String,TextView> rowTimes=new HashMap<>();
  android.content.SharedPreferences prefs;Set<String> favorites;RadioData.Station selected;
  MediaController controller;ListenableFuture<MediaController> future;boolean loading=false,dead=false,foreground=false;int generation=0;String error="",screen="list",query="",sortOrder="frequency";boolean onlyFavorites=false;
+ android.animation.AnimatorSet screenTransition;boolean closingPlayer=false;static final long PLAYER_TRANSITION_MS=360;
  LinearLayout root,body,list,mini,playerContent;View screenHeader;ScrollView scroll;TextView miniTitle,miniSubtitle,playerStatus,programTitle,programTime,programDescription;IconButton miniPlay,fullPlay,favoriteButton;TextView frequencyHeader,nameHeader;boolean scheduleCenterPending;int scheduleRenderGeneration;final Map<String,List<RadioData.Program>> schedules=new HashMap<>();final Map<String,String> scheduleErrors=new HashMap<>();final Set<String> scheduleLoading=new HashSet<>();final Map<String,Long> scheduleFetched=new HashMap<>();LocalDate scheduleDate=LocalDate.now(RadioData.SEOUL);String lastProgram="";long lastRefresh=0;
  final Runnable ticker=new Runnable(){public void run(){if(!dead){updateState();if(foreground&&System.currentTimeMillis()-lastRefresh>60000){lastRefresh=System.currentTimeMillis();loadListedSchedules();refreshProgram();}if(foreground)refreshRows();handler.postDelayed(this,1000);}}};
  @Override public void onCreate(Bundle state){super.onCreate(state);prefs=getSharedPreferences("radio",MODE_PRIVATE);sortOrder=prefs.getString("sort_order","frequency");favorites=new HashSet<>(prefs.getStringSet("favorites",Collections.emptySet()));selected=RadioData.find(prefs.getString("station","kbs25"));if(state!=null){screen=state.getString("screen","list");onlyFavorites=state.getBoolean("favorites");query=state.getString("query","");}if(getIntent().getBooleanExtra("player",false))screen="player";build();connect();loadSchedule(selected,false);handler.post(ticker);}
@@ -33,7 +34,7 @@ public class MainActivity extends Activity {
  @Override protected void onPause(){foreground=false;super.onPause();}
  @Override public void onConfigurationChanged(Configuration c){super.onConfigurationChanged(c);build();}
  @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);if(i.getBooleanExtra("player",false)){screen="player";build();}}
- @Override protected void onDestroy(){dead=true;generation++;handler.removeCallbacksAndMessages(null);io.shutdownNow();scheduleIo.shutdownNow();if(future!=null)MediaController.releaseFuture(future);super.onDestroy();}
+ @Override protected void onDestroy(){dead=true;cancelScreenTransition();generation++;handler.removeCallbacksAndMessages(null);io.shutdownNow();scheduleIo.shutdownNow();if(future!=null)MediaController.releaseFuture(future);super.onDestroy();}
  void connect(){SessionToken token=new SessionToken(this,new ComponentName(this,PlaybackService.class));Bundle controllerHints=new Bundle();controllerHints.putBoolean(PlaybackService.APP_CONTROLLER_KEY,true);future=new MediaController.Builder(this,token).setConnectionHints(controllerHints).buildAsync();future.addListener(()->{try{if(dead)return;controller=future.get();MediaItem item=controller.getCurrentMediaItem();if(item!=null){selected=RadioData.find(item.mediaId);loadSchedule(selected,false);build();}controller.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events events){syncStation();updateState();}@Override public void onPlayerError(PlaybackException e){error="연결이 끊겼습니다. 재생 버튼을 눌러 다시 연결하세요";loading=false;updateState();}});updateState();}catch(Exception e){error="재생기를 연결하지 못했습니다. 앱을 다시 열어주세요";updateState();}},command -> handler.post(command));}
  int dp(float x){return (int)(getResources().getDisplayMetrics().density*x+.5f);}
  LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l;}
@@ -45,10 +46,10 @@ public class MainActivity extends Activity {
  void space(LinearLayout l,int h){l.addView(new View(this),new LinearLayout.LayoutParams(1,dp(h)));}
  TextView action(String label,Runnable run){TextView t=text(label,15,ACCENT);t.setGravity(Gravity.CENTER);t.setMinHeight(dp(48));pad(t,16,8,16,8);touch(t,RAISED,10);t.setOnClickListener(v->run.run());return t;}
  void line(LinearLayout l){View v=new View(this);v.setBackgroundColor(LINE);l.addView(v,new LinearLayout.LayoutParams(-1,dp(1)));}
- void build(){rowPrograms.clear();rowTimes.clear();miniPlay=null;fullPlay=null;playerStatus=null;programTitle=null;programTime=null;programDescription=null;miniTitle=null;miniSubtitle=null;favoriteButton=null;
+ void build(){if(closingPlayer&&screen.equals("player"))screen="list";cancelScreenTransition();rowPrograms.clear();rowTimes.clear();miniPlay=null;fullPlay=null;playerStatus=null;programTitle=null;programTime=null;programDescription=null;miniTitle=null;miniSubtitle=null;favoriteButton=null;
   root=column();root.setBackgroundColor(BG);setContentView(root);root.setOnApplyWindowInsetsListener((v,in)->{if(Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=in.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());root.setPadding(bars.left,bars.top,bars.right,bars.bottom);}else root.setPadding(in.getSystemWindowInsetLeft(),in.getSystemWindowInsetTop(),in.getSystemWindowInsetRight(),in.getSystemWindowInsetBottom());return in;});root.requestApplyInsets();getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
   LinearLayout header=row();pad(header,16,8,16,8);
-  if(!screen.equals("list")){IconButton back=new IconButton("back","방송 목록으로",()->{screen=screen.equals("schedule")?"player":"list";build();});header.addView(back,new LinearLayout.LayoutParams(dp(48),dp(48)));}
+  if(!screen.equals("list")){IconButton back=new IconButton("back","방송 목록으로",this::navigateBack);header.addView(back,new LinearLayout.LayoutParams(dp(48),dp(48)));}
   TextView title=text(screen.equals("list")?"온라디오":screen.equals("schedule")?"오늘의 편성표":"지금 듣는 방송",screen.equals("list")?28:20,INK);header.addView(title,new LinearLayout.LayoutParams(0,-2,1));
   if(screen.equals("list"))header.addView(new IconButton("info","앱 정보",this::info),new LinearLayout.LayoutParams(dp(48),dp(48)));
   else if(screen.equals("player")){favoriteButton=new IconButton(favorites.contains(selected.id)?"starFilled":"star","즐겨찾기 전환",()->{toggleFavorite(selected);build();});header.addView(favoriteButton,new LinearLayout.LayoutParams(dp(48),dp(48)));}
@@ -81,7 +82,23 @@ public class MainActivity extends Activity {
   mini.addView(new IconButton("previous","이전 방송",()->step(-1)),new LinearLayout.LayoutParams(dp(48),dp(48)));miniPlay=new IconButton("play","재생",this::toggle);touch(miniPlay,RAISED,24);mini.addView(miniPlay,new LinearLayout.LayoutParams(dp(48),dp(48)));mini.addView(new IconButton("next","다음 방송",()->step(1)),new LinearLayout.LayoutParams(dp(48),dp(48)));
   mini.setId(R.id.playback_bar);root.addView(mini,new LinearLayout.LayoutParams(-1,-2));
  }
- void openPlayer(){if(screen.equals("player"))return;hideKeyboard();screen="player";build();if(android.animation.ValueAnimator.areAnimatorsEnabled())for(View panel:new View[]{screenHeader,body}){panel.setTranslationY(dp(48));panel.setAlpha(.94f);panel.animate().translationY(0).alpha(1).setDuration(180).setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f)).start();}}
+ void cancelScreenTransition(){if(screenTransition!=null){screenTransition.removeAllListeners();screenTransition.cancel();screenTransition=null;}closingPlayer=false;}
+ void animatePlayer(boolean opening){
+  cancelScreenTransition();closingPlayer=!opening;
+  android.animation.AnimatorSet transition=new android.animation.AnimatorSet();screenTransition=transition;
+  java.util.List<android.animation.Animator> animations=new ArrayList<>();
+  for(View panel:new View[]{screenHeader,body}){
+   if(opening){panel.setTranslationY(dp(48));panel.setAlpha(.94f);}
+   animations.add(android.animation.ObjectAnimator.ofFloat(panel,View.TRANSLATION_Y,opening?0:dp(48)));
+   animations.add(android.animation.ObjectAnimator.ofFloat(panel,View.ALPHA,opening?1:.94f));
+  }
+  transition.playTogether(animations);transition.setDuration(PLAYER_TRANSITION_MS);
+  transition.setInterpolator(opening?new android.view.animation.DecelerateInterpolator(1.5f):new android.view.animation.AccelerateDecelerateInterpolator());
+  transition.addListener(new android.animation.AnimatorListenerAdapter(){@Override public void onAnimationEnd(android.animation.Animator animation){if(screenTransition!=transition||dead)return;screenTransition=null;closingPlayer=false;if(!opening&&screen.equals("player")){screen="list";build();}}});
+  transition.start();
+ }
+ void openPlayer(){if(screen.equals("player"))return;hideKeyboard();screen="player";build();if(android.animation.ValueAnimator.areAnimatorsEnabled())animatePlayer(true);}
+ void navigateBack(){if(closingPlayer)return;if(screen.equals("player")){if(android.animation.ValueAnimator.areAnimatorsEnabled())animatePlayer(false);else{screen="list";build();}}else if(screen.equals("schedule")){screen="player";build();}else super.onBackPressed();}
  void buildPlayer(){scroll=new ScrollView(this);scroll.setFillViewport(true);playerContent=column();pad(playerContent,24,8,24,24);scroll.addView(playerContent);body.addView(scroll,new LinearLayout.LayoutParams(-1,-1));
   TextView brand=text(selected.brand+" RADIO",13,MUTED);playerContent.addView(brand);space(playerContent,12);
   LinearLayout dial=column();pad(dial,24,28,24,20);dial.setBackground(shape(RAISED,16));TextView freq=text(selected.fm,64,INK);freq.setTypeface(android.graphics.Typeface.create("sans-serif-light",android.graphics.Typeface.NORMAL));dial.addView(freq);space(dial,4);dial.addView(text("MHz   /   수도권 FM",13,MUTED));space(dial,16);dial.addView(new DialView(),new LinearLayout.LayoutParams(-1,dp(40)));playerContent.addView(dial);
@@ -124,8 +141,8 @@ public class MainActivity extends Activity {
  }
  void hideKeyboard(){View focus=getCurrentFocus();if(focus!=null)((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(focus.getWindowToken(),0);}
  void browse(String url){try{Uri u=Uri.parse(url);if(!"https".equals(u.getScheme())&&!("http".equals(u.getScheme())&&"tbs.seoul.kr".equals(u.getHost()))){Toast.makeText(this,"방송 홈페이지에서 확인해 주세요",Toast.LENGTH_SHORT).show();return;}startActivity(new Intent(Intent.ACTION_VIEW,u));}catch(Exception e){Toast.makeText(this,"링크를 열 앱을 찾지 못했습니다",Toast.LENGTH_SHORT).show();}}
- void info(){new AlertDialog.Builder(this).setTitle("온라디오").setMessage("0.1.0-dev3\n\n국내 FM 채널을 인터넷으로 듣습니다. 주파수는 수도권 기준이며 실제 수신 주파수와 무관합니다.\n\n즐겨찾기는 기기에 저장됩니다. 녹음이나 개인정보 수집 기능은 없습니다. 방송사는 이 앱과 제휴 관계가 아닙니다.\n\n디자인 참고: Unslop · Damir Sokolovsky · CC BY 4.0").setPositiveButton("확인",null).show();}
- @Override public void onBackPressed(){if(!screen.equals("list")){screen=screen.equals("schedule")?"player":"list";build();}else super.onBackPressed();}
+ void info(){new AlertDialog.Builder(this).setTitle("온라디오").setMessage("0.1.0-dev4\n\n국내 FM 채널을 인터넷으로 듣습니다. 주파수는 수도권 기준이며 실제 수신 주파수와 무관합니다.\n\n즐겨찾기는 기기에 저장됩니다. 녹음이나 개인정보 수집 기능은 없습니다. 방송사는 이 앱과 제휴 관계가 아닙니다.\n\n디자인 참고: Unslop · Damir Sokolovsky · CC BY 4.0").setPositiveButton("확인",null).show();}
+ @Override public void onBackPressed(){navigateBack();}
  class IconButton extends View {String icon;int color=INK;Paint paint=new Paint(3);IconButton(String icon,String label,Runnable run){super(MainActivity.this);this.icon=icon;setContentDescription(label);setFocusable(true);setClickable(true);touch(this,BG,24);setOnClickListener(v->run.run());} @Override public CharSequence getAccessibilityClassName(){return "android.widget.Button";} @Override protected void onDraw(Canvas c){super.onDraw(c);c.save();float sz=dp(24);c.translate((getWidth()-sz)/2,(getHeight()-sz)/2);c.scale(sz/24,sz/24);paint.setColor(icon.equals("starFilled")?ACCENT:color);paint.setStrokeWidth(1.8f);paint.setStrokeCap(Paint.Cap.ROUND);paint.setStrokeJoin(Paint.Join.ROUND);paint.setStyle(Paint.Style.STROKE);Path p=new Path();
   switch(icon){case "play":paint.setStyle(Paint.Style.FILL);p.moveTo(7,4);p.lineTo(21,12);p.lineTo(7,20);p.close();c.drawPath(p,paint);break;
    case "pause":paint.setStyle(Paint.Style.FILL);c.drawRoundRect(6,4,10,20,1,1,paint);c.drawRoundRect(14,4,18,20,1,1,paint);break;
