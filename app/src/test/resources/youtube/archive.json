@@ -1,0 +1,19 @@
+{
+  "playabilityStatus": {
+    "status": "OK"
+  },
+  "videoDetails": {
+    "videoId": "CMLD0Lp0JBg",
+    "channelId": "UCLA_DiR1FfKNvjuUpBHmylQ",
+    "isLiveContent": true
+  },
+  "microformat": {
+    "playerMicroformatRenderer": {
+      "liveBroadcastDetails": {
+        "isLiveNow": false,
+        "startTimestamp": "2022-11-16T03:30:53+00:00",
+        "endTimestamp": "2022-11-16T08:52:46+00:00"
+      }
+    }
+  }
+}

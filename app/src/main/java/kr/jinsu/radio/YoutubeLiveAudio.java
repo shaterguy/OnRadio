@@ -32,29 +32,61 @@ final class YoutubeLiveAudio {
    return "https://www.youtube.com/watch?v="+id;
   }catch(URISyntaxException|IllegalArgumentException error){throw new IOException("라이브 주소 형식을 확인해 주세요");}
  }
- static LiveInfo inspect(String value)throws Exception{return resolvePage(canonicalPage(value),"");}
- static String resolve(String videoId)throws Exception{return resolve(videoId,CHANNEL_ID);}
- static String resolve(String videoId,String channelId)throws Exception{
-  if(!videoId.matches("[A-Za-z0-9_-]{11}")||!channelId.matches("UC[A-Za-z0-9_-]{22}"))throw new IOException("라이브 주소 형식 오류");
-  try{return resolvePage("https://www.youtube.com/watch?v="+videoId,channelId).audioUrl;}
-  catch(IOException unavailable){return resolvePage("https://www.youtube.com/channel/"+channelId+"/live",channelId).audioUrl;}
+ enum LiveState {LIVE,ENDED,UPCOMING,NOT_LIVE,UNKNOWN}
+ static final class LiveUnavailableException extends IOException {
+  final LiveState state;LiveUnavailableException(LiveState state){super(notice(state));this.state=state;}
  }
- private static LiveInfo resolvePage(String pageUrl,String expectedChannel)throws Exception{
-  String page=request(pageUrl,null,null);JSONObject initial=playerFromPage(page);JSONObject details=initial.optJSONObject("videoDetails");
+ interface Fetcher {String request(String url,String body,String visitorId)throws Exception;}
+ static String notice(LiveState state){
+  switch(state){
+   case ENDED:return "등록한 라이브가 종료되었습니다. 새 라이브 주소를 확인해 주세요.";
+   case UPCOMING:return "아직 시작하지 않은 라이브입니다. 방송 시작 후 다시 재생해 주세요.";
+   case NOT_LIVE:return "이 주소는 현재 라이브 방송이 아닙니다. 라이브 주소를 확인해 주세요.";
+   default:return "라이브 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+  }
+ }
+ static LiveInfo inspect(String value)throws Exception{
+  String page=canonicalPage(value);return resolvePage(page,"",page.startsWith("https://www.youtube.com/watch?v=")?page.substring(page.indexOf('=')+1):"",YoutubeLiveAudio::request);
+ }
+ static String resolve(String videoId)throws Exception{return resolve(videoId,CHANNEL_ID);}
+ static String resolve(String videoId,String channelId)throws Exception{return resolve(videoId,channelId,YoutubeLiveAudio::request);}
+ static String resolve(String videoId,String channelId,Fetcher fetcher)throws Exception{
+  if(!videoId.matches("[A-Za-z0-9_-]{11}")||!channelId.matches("UC[A-Za-z0-9_-]{22}"))throw new IOException("라이브 주소 형식 오류");
+  return resolvePage("https://www.youtube.com/watch?v="+videoId,channelId,videoId,fetcher).audioUrl;
+ }
+ static void validateIdentity(JSONObject response,String expectedChannel,String expectedVideo)throws IOException{
+  JSONObject details=response.optJSONObject("videoDetails");
   if(details==null)throw new IOException("공개 라이브를 확인하지 못했습니다");
-  String channelId=details.optString("channelId");
-  if(!channelId.matches("UC[A-Za-z0-9_-]{22}")||!expectedChannel.isEmpty()&&!expectedChannel.equals(channelId))throw new IOException("등록한 유튜브 채널의 라이브가 아닙니다");
-  String id=details.optString("videoId");if(!id.matches("[A-Za-z0-9_-]{11}"))throw new IOException("라이브 식별자 오류");
+  String id=details.optString("videoId"),channel=details.optString("channelId");
+  if(!id.matches("[A-Za-z0-9_-]{11}")||!channel.matches("UC[A-Za-z0-9_-]{22}")||!expectedVideo.isEmpty()&&!expectedVideo.equals(id)||!expectedChannel.isEmpty()&&!expectedChannel.equals(channel))throw new IOException("등록한 라이브의 재생 정보가 일치하지 않습니다");
+ }
+ static LiveState liveState(JSONObject response){
+  JSONObject status=response.optJSONObject("playabilityStatus"),details=response.optJSONObject("videoDetails");
+  if(status==null||details==null)return LiveState.UNKNOWN;
+  String code=status.optString("status");
+  JSONObject format=response.optJSONObject("microformat"),renderer=format==null?null:format.optJSONObject("playerMicroformatRenderer"),broadcast=renderer==null?null:renderer.optJSONObject("liveBroadcastDetails");
+  boolean live=details.optBoolean("isLive")||broadcast!=null&&broadcast.optBoolean("isLiveNow");
+  if("OK".equals(code)&&live)return LiveState.LIVE;
+  if(details.optBoolean("isUpcoming")&&("OK".equals(code)||"LIVE_STREAM_OFFLINE".equals(code)))return LiveState.UPCOMING;
+  if(!"OK".equals(code))return LiveState.UNKNOWN;
+  if(broadcast!=null){try{long end=java.time.OffsetDateTime.parse(broadcast.optString("endTimestamp")).toInstant().toEpochMilli();if(end>0&&end<=System.currentTimeMillis())return LiveState.ENDED;}catch(java.time.DateTimeException ignored){}}
+  if(details.has("isLiveContent")&&!details.optBoolean("isLiveContent"))return LiveState.NOT_LIVE;
+  return LiveState.UNKNOWN;
+ }
+ private static LiveInfo resolvePage(String pageUrl,String expectedChannel,String expectedVideo,Fetcher fetcher)throws Exception{
+  String page=fetcher.request(pageUrl,null,null);JSONObject initial=playerFromPage(page);validateIdentity(initial,expectedChannel,expectedVideo);JSONObject details=initial.getJSONObject("videoDetails");
+  String channelId=details.getString("channelId"),id=details.getString("videoId");LiveState initialState=liveState(initial);
+  if(initialState==LiveState.ENDED||initialState==LiveState.UPCOMING||initialState==LiveState.NOT_LIVE)throw new LiveUnavailableException(initialState);
   Matcher visitor=VISITOR.matcher(page);String visitorId=visitor.find()?new JSONTokener("\""+visitor.group(1)+"\"").nextValue().toString():"";
   if(visitorId.isEmpty())throw new IOException("라이브 접속 정보를 가져오지 못했습니다");
   JSONObject client=new JSONObject().put("clientName","VISIONOS").put("clientVersion","1.02").put("deviceMake","Apple").put("deviceModel","RealityDevice17,1").put("userAgent",CLIENT_AGENT).put("osName","visionOS").put("osVersion","26.5.23O471").put("hl","en").put("timeZone","UTC").put("utcOffsetMinutes",0);
   JSONObject playback=new JSONObject().put("html5Preference","HTML5_PREF_WANTS");
   Matcher timestamp=Pattern.compile("\"(?:STS|signatureTimestamp)\"\\s*:\\s*(\\d+)").matcher(page);if(timestamp.find())playback.put("signatureTimestamp",Long.parseLong(timestamp.group(1)));
   JSONObject body=new JSONObject().put("context",new JSONObject().put("client",client)).put("videoId",id).put("playbackContext",new JSONObject().put("contentPlaybackContext",playback)).put("contentCheckOk",true).put("racyCheckOk",true);
-  JSONObject response=new JSONObject(request("https://www.youtube.com/youtubei/v1/player?prettyPrint=false",body.toString(),visitorId));
-  validateLivePlayer(response,channelId);if(!id.equals(response.getJSONObject("videoDetails").optString("videoId")))throw new IOException("라이브 재생 정보가 일치하지 않습니다");
+  JSONObject response=new JSONObject(fetcher.request("https://www.youtube.com/youtubei/v1/player?prettyPrint=false",body.toString(),visitorId));
+  validateIdentity(response,channelId,id);validateLivePlayer(response,channelId);
   JSONObject streams=response.optJSONObject("streamingData");String master=streams==null?"":streams.optString("hlsManifestUrl");validateMediaUrl(master);
-  return new LiveInfo(id,channelId,audioRendition(request(master,null,null),master));
+  return new LiveInfo(id,channelId,audioRendition(fetcher.request(master,null,null),master));
  }
  static JSONObject playerFromPage(String html)throws Exception{
   Matcher match=PLAYER.matcher(html);if(!match.find())throw new IOException("라이브 재생 정보를 찾지 못했습니다");
@@ -62,8 +94,9 @@ final class YoutubeLiveAudio {
  }
  static void validateLivePlayer(JSONObject response)throws Exception{validateLivePlayer(response,CHANNEL_ID);}
  static void validateLivePlayer(JSONObject response,String channelId)throws Exception{
-  JSONObject status=response.optJSONObject("playabilityStatus"),details=response.optJSONObject("videoDetails");
-  if(status==null||!"OK".equals(status.optString("status"))||details==null||!channelId.equals(details.optString("channelId"))||!details.optBoolean("isLive"))throw new IOException("현재 공개 방송 중인 라이브가 아닙니다");
+  JSONObject details=response.optJSONObject("videoDetails");
+  if(details==null||!channelId.equals(details.optString("channelId")))throw new IOException("등록한 유튜브 채널의 라이브가 아닙니다");
+  LiveState state=liveState(response);if(state!=LiveState.LIVE)throw new LiveUnavailableException(state);
  }
  static Map<String,String> attributes(String line){
   Map<String,String> result=new HashMap<>();Matcher match=ATTRIBUTE.matcher(line.substring(line.indexOf(':')+1));

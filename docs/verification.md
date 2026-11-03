@@ -130,3 +130,19 @@ DEV18 independent review: PASS_WITH_RESIDUAL_RISK; security PASS; scope IN_SCOPE
 SELF_CHECK / SECURITY_DELTA=NONE / IN_SCOPE. MainActivity의 변경분을 기준 소스와 재구성해 일치시켰으며 입력창 설정 5곳과 버전 표시만 변경했습니다. 빌드·린트 통과, 전체 116개 중 114개 통과·실제 네트워크 선택 검사 2개 미실행입니다. 신규 회귀시험은 API26/28에서 일반 입력창의 자동완성 제외, 등록·수정·포커스 이동·화면 재구성 후 초안 복원, 일반 텍스트/URI 입력형식을 검사했습니다. 첫 시험의 single-line 변환을 비밀번호 변환으로 취급한 assertion은 실제 비밀번호 변환 여부 검사로 정정했습니다. API35 Robolectric는 Linux aarch64 native runtime 미지원으로 실행되지 않았으며 이 결과를 제품 오류나 통과로 표시하지 않습니다. 실제 삼성패스 서비스의 안내가 사라지는지에 대한 단말 관찰은 미검증입니다.
 
 dev18과 동일 applicationId·서명, versionCode18→19, minSdk26/targetSdk36, apksigner와 zipalign을 확인했습니다. 전달 후보 OnRadio-v0.1.0-dev19.apk, 4718676 bytes, SHA-256 a52ca3e65dc72bafd4b0ca76d0faab85c27c5a4cb6ecfb906c0ff034855ea860.
+
+## 0.1.0-dev20 라이브 종료 안내와 등록 영상 고정
+
+사용자 요청: 등록된 라이브가 종료되어 일반 영상으로 전환됐을 때 재생 시 안내합니다. 한 채널에 다수의 라이브가 있을 수 있으므로 채널 단위 자동 탐색으로 후속 방송을 임의 대체하지 않습니다. watch 영상 ID를 저장값→초기 페이지→player API 양쪽에 대조하고 기존 channel/live fallback을 제거했습니다.
+
+수정 전 YouTube의 공개 player 원문을 실제 조회해 NASA 아카이브 CMLD0Lp0JBg(현재 isLive 키 없음, isLiveContent=true, 과거 endTimestamp), 현재 연합뉴스TV 라이브(isLive/isLiveNow=true), 일반 영상(isLiveContent=false)을 비교했습니다. 필요한 공개 필드만 정적 fixture로 보존했습니다. 과거 종료 시각의 구조화 근거가 있을 때 ENDED, 명시적인 현재 live는 LIVE, 시작 전은 UPCOMING, 일반 영상은 NOT_LIVE, 비공개·삭제·접속 실패·누락·잘못된 시간은 UNKNOWN으로 처리합니다. 상태 미확인을 종료로 표시하지 않고 오디오 전용 검증 전에는 재생하지 않습니다.
+
+종료 안내는 typed SessionResult extras로 대상 id/video를 포함해 앱 foreground의 액션 Dialog(주소 수정)로 전달합니다. 화면 밖에서는 대상명을 포함한 Toast를 사용하며 백그라운드 Activity에 Dialog를 띄우지 않습니다. 같은 실패 대상의 확정된 not-live 상태만 재생 의도를 해제하고, 다른 방송이나 일시적 네트워크 실패 시 기존 재생은 보존합니다. 일반 접속 실패 안내는 앱 요청에서도 Toast를 유지합니다. 취소·새 요청·주소 변경·오디오 출력 세대 변경 이후의 늦은 결과와 오래된 수정 액션을 무효화합니다.
+
+ONRADIO_ENDED_REFINEBUILD_20261103_08: 빌드·린트 성공, 전체 137개 중 135개 통과·명시적 외부 네트워크 검사 2개 미실행, 실패 0개입니다. 회귀검사는 현재/종료/일반/예정/미확인 분류, 같은 채널의 다른 초기/API 영상 거부, 페이지와 API 사이 종료, 네트워크 실패 시 다른 라이브 탐색 금지, 정확한 오디오 선택, 실제 PlaybackService/ExoPlayer 상태·타입 전달·Toast·취소 경합, Activity Dialog/주소 수정 버튼과 늦은 액션·화면 이탈 처리를 포함합니다. 초기 UI 시험은 AlertDialog 비동기 button Handler를 진행하지 않은 시험 코드가 원인이었으며 실제 이벤트 loop를 진행하도록 바로잡았습니다.
+
+동일 YoutubeLiveAudio 후보의 ONRADIO_ENDED_TESTBUILD_20261103_06에서 기본 공개 라이브 3개 모두 실제 오디오 media playlist 수신에 성공했습니다(PUBLIC_AUDIO_PLAYLIST_OK yonhap/ytnlive/mbcnews). _06의 UI 시험 1개 실패를 전체 성공으로 표시하지 않으며 해당 네트워크 성공 증거만 보존해 재사용했습니다. 기존 오디오 rendition/영상 차단·즐겨찾기·입력 자동완성 제외는 보존합니다. 실제 단말 설치·종료 순간의 청취·물리 블루투스 동작은 미검증입니다.
+
+dev19와 applicationId/서명 인증서 일치, versionCode19→20, minSdk26/targetSdk36, apksigner·zipalign·canonical/전달 APK 바이트 일치를 확인했습니다. OnRadio-v0.1.0-dev20.apk, 4795494 bytes, SHA-256 ccf14cdfbfb299c09e310958e026d27cfeabf72d0f9235c88ed96ae4b60df35a.
+
+DEV20 independent review: INDEPENDENT=PASS_WITH_RESIDUAL_RISK; SECURITY_SCREENING=PASS; SCOPE=IN_SCOPE. Independent reviewer read final source, _08 terminal build result, latest 137-test XML and preserved _06 public-live evidence. No blocking findings remain. Physical device screen-off/hardware resume end-to-end remains unverified.
