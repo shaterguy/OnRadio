@@ -146,3 +146,17 @@ ONRADIO_ENDED_REFINEBUILD_20261103_08: 빌드·린트 성공, 전체 137개 중 
 dev19와 applicationId/서명 인증서 일치, versionCode19→20, minSdk26/targetSdk36, apksigner·zipalign·canonical/전달 APK 바이트 일치를 확인했습니다. OnRadio-v0.1.0-dev20.apk, 4795494 bytes, SHA-256 ccf14cdfbfb299c09e310958e026d27cfeabf72d0f9235c88ed96ae4b60df35a.
 
 DEV20 independent review: INDEPENDENT=PASS_WITH_RESIDUAL_RISK; SECURITY_SCREENING=PASS; SCOPE=IN_SCOPE. Independent reviewer read final source, _08 terminal build result, latest 137-test XML and preserved _06 public-live evidence. No blocking findings remain. Physical device screen-off/hardware resume end-to-end remains unverified.
+
+## 0.1.0-dev21 삼성패스 저장 안내 재발 대응
+
+사용자가 dev19/20 이후에도 삼성패스 저장 안내가 계속 나타난다고 보고했습니다. 이전 importance 플래그 검사만으로 공급자 동작이 해결됐다고 판단한 검증은 불충분했습니다. Android 공식 View 문서는 API34 이상 및 수동 요청에서 NO/NO_EXCLUDE_DESCENDANTS의 내용도 Autofill ViewStructure에 포함될 수 있음을 명시합니다. 현재 SDK36/min26 기준 API를 사용해 해당 전달 경로를 변경했습니다.
+
+검색·채널명·라이브 URL 3입력은 공통 PlainTextInput으로 교체했습니다. Autofill 타입 NONE/value null, autofill 무시, onProvideAutofillStructure에서 텍스트·힌트·contentDescription·value·autofill hints/options 미전달 및 inputType0의 최소노드를 제공합니다. 이 경로에서 TextView super를 호출하지 않으며 일반 Assist·접근성·IME·붙여넣기는 변경하지 않습니다. PlainInputDialog.dismiss가 실제 Window 제거 전에 AutofillManager.cancel을 호출하여 성공/취소 버튼/뒤로·cancel/외부 닫기/프로그램 dismiss/회전의 제거 경로를 포괄합니다. Main은 생성·화면 교체·pause·destroy·폼 제출 전에 앱의 Autofill 세션을 취소합니다. 기기 전체 서비스 설정·권한·계정 정보와 방송 재생 로직은 변경하지 않았습니다.
+
+ONRADIO_PASS_VERIFY_20261103_07: 빌드·린트 통과, 전체151개 중149개 통과·명시적 외부 네트워크 검사2개 미실행·실패0. 신규14개는 API26/28에서 기존 EditText+importance NO의 강제 구조 요청에 텍스트가 노출되는 baseline, 새 입력의 flag0/1 구조 텍스트·힌트·값 없음, 타입NONE/value없음/autofill 무시, 일반 Assist·접근성 텍스트 및 실제 InputConnection 한글 입력/clipboard paste, 실제3입력 컴포넌트, 저장/취소/cancel/dismiss/화면교체의 cancel-before-detach를 확인합니다. 초기9개 실패는 window attach/layout 없이 작성한 테스트가 원인이었으며 visible·실제 root mount·measure/layout·main loop 처리를 보완한 뒤 동일 제품 후보에서 통과했습니다.
+
+ADB devices 원본은 연결 기기0입니다. 이 결과는 Android 구조·세션·입력 동작의 자동 검증이며 실제 Samsung Pass 저장 UI가 사라지는지와 최신 One UI/키보드 공급자별 동작은 미검증입니다. 공급자 또는 수동 요청까지 보편적으로 차단했다고 주장하지 않습니다. 기존 dev20의 재생·종료 알림 회귀시험은 동일 후보의 전체 검사에 포함했습니다.
+
+dev20과 동일 applicationId/서명 인증서, versionCode20→21, minSdk26/targetSdk36, apksigner·zipalign 및 최종복사 APK 바이트/SHA 일치를 확인했습니다. OnRadio-v0.1.0-dev21.apk, 4722624 bytes, SHA-256 17e80e1d86821aca90b6f75130f3e573d83b22c60c52d3054907d20fcf7197d2.
+
+DEV21 independent review: INDEPENDENT=PASS_WITH_RESIDUAL_RISK; SECURITY_SCREENING=PASS; SCOPE=IN_SCOPE. Independent reviewer directly read final source, _07 terminal build result, latest151-test XML and the14 new API26/28 input tests. No blocking product findings remain. Samsung Pass provider UI on a physical device remains unverified; no connected ADB device was present.
